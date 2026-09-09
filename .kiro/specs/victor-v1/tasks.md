@@ -1,0 +1,168 @@
+# Implementation Plan
+
+- [x] 1. Scaffold monorepo, backend, and frontend foundations
+  - Create workspace with `frontend/` (Next.js + TypeScript + Tailwind) and `backend/` (NestJS + TypeScript) as independent packages
+  - Add `.env.example` documenting all required variables (Supabase URL/anon/service keys, GEMINI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, provider models, rate-limit config)
+  - Configure ESLint, Prettier, `tsconfig`, and Jest with `fast-check` in both packages
+  - _Requirements: 5.5_
+
+- [ ] 2. Define shared types and database schema
+- [ ] 2.1 Create shared TypeScript domain types
+  - Define `Profile`, `UserSettings`, `Conversation`, `Message`, `AIRequest`, `AIResult`, `AIChunk`, `AIProvider` interfaces
+  - Define the supported `(provider, model)` allow-list constant
+  - _Requirements: 2.3, 4.1, 5.2_
+- [ ] 2.2 Create Supabase SQL migrations
+  - Create `profiles`, `user_settings`, `conversations`, `messages` tables with FKs and `ON DELETE CASCADE` from conversations to messages
+  - Add indexes on `conversations.userId` and `messages(conversationId, createdAt)`; enable `pgvector` extension (unused in V1)
+  - _Requirements: 3.4, 4.3_
+
+- [ ] 3. Implement authentication and request-context user id
+- [ ] 3.1 Implement SupabaseAuthGuard and user-id extraction
+  - Verify the bearer token via Supabase, attach `Authenticated_User_Id` to request context, reject missing/invalid tokens with 401
+  - Ensure any `userId` in request bodies is ignored in favor of the session-derived id
+  - _Requirements: 1.3, 1.4, 1.5_
+- [ ] 3.2 Implement signup/login flows against Supabase auth
+  - Wire signup (create profile) and login (session token) paths; return conflict on duplicate email
+  - _Requirements: 1.1, 1.2, 1.3_
+- [ ]* 3.3 Write property test for auth rejection
+  - **Feature: victor-v1, Property 1: Protected endpoints reject requests without a valid session**
+  - **Validates: Requirements 1.4**
+- [ ]* 3.4 Write property test for session-derived user id override
+  - **Feature: victor-v1, Property 2: Session-derived user id overrides request body**
+  - **Validates: Requirements 1.5**
+- [ ]* 3.5 Write unit tests for signup/login
+  - Cover signup happy path, duplicate-email conflict, and login session establishment
+  - _Requirements: 1.1, 1.2, 1.3_
+
+- [ ] 4. Implement users profile and settings module
+- [ ] 4.1 Implement UsersService and endpoints
+  - Implement `GET /users/me`, `GET /users/me/settings`, `PATCH /users/me/settings` with DTO validation against the allow-list
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+- [ ]* 4.2 Write property test for settings round trip
+  - **Feature: victor-v1, Property 3: Settings round trip**
+  - **Validates: Requirements 2.2, 2.4**
+- [ ]* 4.3 Write property test for unsupported settings rejection
+  - **Feature: victor-v1, Property 4: Unsupported settings rejected**
+  - **Validates: Requirements 2.3**
+
+- [ ] 5. Implement conversations module with ownership enforcement
+- [ ] 5.1 Implement ConversationsService and endpoints
+  - Implement create, list, get-owned, and delete with a reusable ownership check returning 403 on non-owned access/mutation
+  - Ensure delete removes the conversation and cascades to its messages
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+- [ ]* 5.2 Write property test for conversation ownership on creation
+  - **Feature: victor-v1, Property 5: Created conversation is owned by its creator**
+  - **Validates: Requirements 3.1**
+- [ ]* 5.3 Write property test for ownership enforcement on access and mutation
+  - **Feature: victor-v1, Property 6: Ownership enforcement on access and mutation**
+  - **Validates: Requirements 3.3, 3.5, 4.4**
+- [ ]* 5.4 Write property test for list isolation
+  - **Feature: victor-v1, Property 7: List returns exactly the caller's conversations**
+  - **Validates: Requirements 3.2**
+- [ ]* 5.5 Write property test for cascade delete
+  - **Feature: victor-v1, Property 8: Delete cascades to messages**
+  - **Validates: Requirements 3.4**
+
+- [ ] 6. Checkpoint - Make sure all tests are passing
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 7. Implement AI provider abstraction and codec
+- [ ] 7.1 Implement AIProvider interface and three providers
+  - Implement `GeminiProvider`, `GroqProvider`, `OpenRouterProvider` with `generate()`, `stream()`, `getAvailableModels()`, reading credentials from env
+  - _Requirements: 5.1, 5.2, 5.5_
+- [ ] 7.2 Implement AIRequestCodec (encode/decode)
+  - Implement provider payload encode/decode so decode(encode(request)) is equivalent to the original
+  - _Requirements: 5.3_
+- [ ]* 7.3 Write property test for AI request payload round trip
+  - **Feature: victor-v1, Property 11: AI request payload round trip**
+  - **Validates: Requirements 5.3**
+- [ ]* 7.4 Write property test for credential exclusion from responses
+  - **Feature: victor-v1, Property 12: Responses exclude provider credentials**
+  - **Validates: Requirements 5.5**
+- [ ]* 7.5 Write unit tests for provider interface conformance
+  - Assert each provider implements the AIProvider interface operations
+  - _Requirements: 5.1, 5.2_
+
+- [ ] 8. Implement AIRouter with selection and bounded fallback
+- [ ] 8.1 Implement AIRouter selection and fallback logic
+  - Resolve primary provider/model from user settings; on failure/rate-limit try secondary then tertiary in order; each provider attempted at most once; return one error if all fail
+  - _Requirements: 6.1, 6.2, 6.3, 6.4_
+- [ ]* 8.2 Write property test for provider/model selection
+  - **Feature: victor-v1, Property 13: Router selects the configured provider and model**
+  - **Validates: Requirements 6.1**
+- [ ]* 8.3 Write property test for bounded ordered fallback
+  - **Feature: victor-v1, Property 14: Bounded ordered provider fallback**
+  - **Validates: Requirements 6.2, 6.3, 6.4**
+
+- [ ] 9. Implement AIService facade
+- [ ] 9.1 Implement AIService generate and stream over AIRouter
+  - Expose `generate()` and `stream()` delegating to the AIRouter
+  - _Requirements: 5.1_
+
+- [ ] 10. Implement messages module with persistence and streaming
+- [ ] 10.1 Implement MessagesService persistence and ordered reads
+  - Persist user and assistant messages with correct roles; list messages ordered by createdAt ascending; enforce conversation ownership
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+- [ ] 10.2 Implement SSE send and regenerate endpoints
+  - Stream assistant reply as ordered chunks; persist assistant content equal to concatenated chunks; regenerate replies to the preceding user message
+  - _Requirements: 7.1, 7.2, 8.4_
+- [ ]* 10.3 Write property test for message role/content persistence
+  - **Feature: victor-v1, Property 9: Messages persist with correct role and content**
+  - **Validates: Requirements 4.1, 4.2**
+- [ ]* 10.4 Write property test for ascending message ordering
+  - **Feature: victor-v1, Property 10: Messages are returned in ascending creation order**
+  - **Validates: Requirements 4.3**
+- [ ]* 10.5 Write property test for stream reassembly
+  - **Feature: victor-v1, Property 15: Streaming chunks reassemble to persisted content**
+  - **Validates: Requirements 7.1, 7.2**
+
+- [ ] 11. Implement validation, rate limiting, and error handling
+- [ ] 11.1 Add DTO validation, throttler, and global exception filter
+  - Apply `class-validator` DTOs (reject invalid bodies with no persistence), per-user throttling on AI/message endpoints (429), and a global filter that strips stack details and logs errors
+  - _Requirements: 9.1, 9.2, 9.3_
+- [ ]* 11.2 Write property test for invalid-body no-persistence
+  - **Feature: victor-v1, Property 20: Invalid request bodies persist nothing**
+  - **Validates: Requirements 9.1**
+- [ ]* 11.3 Write property test for rate limiting
+  - **Feature: victor-v1, Property 21: Requests beyond the rate limit are rejected**
+  - **Validates: Requirements 9.2**
+- [ ]* 11.4 Write property test for error masking and logging
+  - **Feature: victor-v1, Property 22: Unexpected errors hide internals and are logged**
+  - **Validates: Requirements 9.3**
+
+- [ ] 12. Checkpoint - Make sure all tests are passing
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 13. Implement frontend auth, settings, and API client
+- [ ] 13.1 Implement API client and auth pages
+  - Build `apiClient` that attaches the session token (never provider keys); build `/login` and `/signup` pages wired to Supabase auth
+  - _Requirements: 1.3, 5.4_
+- [ ] 13.2 Implement `/settings` page
+  - Build provider/model selection form calling the settings endpoints
+  - _Requirements: 2.2, 2.3_
+
+- [ ] 14. Implement chat interface
+- [ ] 14.1 Implement chat page shell and conversation sidebar
+  - Build `/chat` with `ConversationSidebar` (new conversation, delete conversation, collapsible on mobile), `MessageList`, and `MessageInput`
+  - _Requirements: 8.1, 8.5, 3.1, 3.4_
+- [ ] 14.2 Implement message rendering, streaming consumption, and controls
+  - Render messages with role indicators; consume SSE with loading/error states; implement copy and regenerate controls
+  - _Requirements: 8.2, 8.3, 8.4, 7.3, 7.4_
+- [ ]* 14.3 Write property test for message rendering with role indicator
+  - **Feature: victor-v1, Property 17: Rendered message shows content and matching role indicator**
+  - **Validates: Requirements 8.2**
+- [ ]* 14.4 Write property test for copy-to-clipboard
+  - **Feature: victor-v1, Property 18: Copy places assistant content on the clipboard**
+  - **Validates: Requirements 8.3**
+- [ ]* 14.5 Write property test for regenerate target selection
+  - **Feature: victor-v1, Property 19: Regenerate targets the preceding user message**
+  - **Validates: Requirements 8.4**
+- [ ]* 14.6 Write property test for loading state during streaming
+  - **Feature: victor-v1, Property 16: Loading state during streaming**
+  - **Validates: Requirements 7.3**
+- [ ]* 14.7 Write unit tests for chat UI examples
+  - Cover chat route rendering (8.1), streaming error state (7.4), and mobile collapsible sidebar (8.5)
+  - _Requirements: 8.1, 7.4, 8.5_
+
+- [ ] 15. Final Checkpoint - Make sure all tests pass and the build is clean
+  - Ensure all tests pass, run TypeScript checks, lint, and a production build; ask the user if questions arise.
