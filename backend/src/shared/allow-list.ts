@@ -13,6 +13,27 @@ export const SUPPORTED_MODELS: Readonly<Record<AIProviderName, readonly string[]
   openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet'],
 } as const;
 
+/**
+ * Context-window size (max tokens) per supported model. Used to express token
+ * usage as a percentage of a model's capacity and how many tokens remain.
+ */
+export const MODEL_CONTEXT_WINDOW: Readonly<Record<string, number>> = {
+  'gemini-3.6-flash': 1_048_576,
+  'gemini-2.5-pro': 1_048_576,
+  'openai/gpt-oss-20b': 8_192,
+  'openai/gpt-oss-120b': 8_192,
+  'openai/gpt-4o-mini': 128_000,
+  'anthropic/claude-3.5-sonnet': 200_000,
+} as const;
+
+/** Fallback context window when a model is not listed above. */
+export const DEFAULT_CONTEXT_WINDOW = 8_192;
+
+/** Returns the context window (max tokens) for a model. */
+export function contextWindowFor(model: string): number {
+  return MODEL_CONTEXT_WINDOW[model] ?? DEFAULT_CONTEXT_WINDOW;
+}
+
 /** All supported provider names derived from the allow-list. */
 export const SUPPORTED_PROVIDERS = Object.keys(
   SUPPORTED_MODELS,

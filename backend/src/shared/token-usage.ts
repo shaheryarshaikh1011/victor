@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { contextWindowFor } from './allow-list';
 import { AIProviderName } from './types';
 
 /**
@@ -50,7 +51,12 @@ export function usageFromGemini(usage: unknown): TokenUsage | undefined {
   };
 }
 
-/** Logs token usage in one consistent format across all providers. */
+/**
+ * Logs token usage in one consistent, human-readable format across all
+ * providers, expressing consumption against the model's context window:
+ * how many tokens were used, the window size, the percent used, and how many
+ * tokens remain.
+ */
 export function logTokenUsage(
   logger: Logger,
   provider: AIProviderName,
@@ -60,11 +66,18 @@ export function logTokenUsage(
   if (!usage) {
     return;
   }
+  const window = contextWindowFor(model);
+  const used = usage.totalTokens;
+  const remaining = Math.max(window - used, 0);
+  const percentUsed = window > 0 ? (used / window) * 100 : 0;
+
   logger.log(
-    `usage provider=${provider} model=${model} ` +
-      `promptTokens=${usage.promptTokens} ` +
-      `completionTokens=${usage.completionTokens} ` +
-      `totalTokens=${usage.totalTokens}`,
+    `Token usage for ${provider}/${model}: ` +
+      `${used.toLocaleString()} / ${window.toLocaleString()} tokens used ` +
+      `(${percentUsed.toFixed(1)}%), ` +
+      `${remaining.toLocaleString()} tokens left ` +
+      `[prompt=${usage.promptTokens.toLocaleString()}, ` +
+      `completion=${usage.completionTokens.toLocaleString()}]`,
   );
 }
 
