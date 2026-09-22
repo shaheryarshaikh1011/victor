@@ -3,3 +3,4 @@ export * from './gemini.provider';
 export * from './groq.provider';
 export * from './openrouter.provider';
 export * from './ai-request.codec';
+export * from './ai-router';

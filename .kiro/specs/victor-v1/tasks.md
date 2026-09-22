@@ -83,8 +83,8 @@
   - Assert each provider implements the AIProvider interface operations
   - _Requirements: 5.1, 5.2_
 
-- [ ] 8. Implement AIRouter with selection and bounded fallback
-- [ ] 8.1 Implement AIRouter selection and fallback logic
+- [x] 8. Implement AIRouter with selection and bounded fallback
+- [x] 8.1 Implement AIRouter selection and fallback logic
   - Resolve primary provider/model from user settings; on failure/rate-limit try secondary then tertiary in order; each provider attempted at most once; return one error if all fail
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 - [ ]* 8.2 Write property test for provider/model selection
