@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AIChunk,
   AIProvider,
   AIRequest,
   AIResult,
+  logTokenUsage,
   SUPPORTED_MODELS,
+  usageFromOpenAI,
 } from '../shared';
 import { readSseData } from './gemini.provider';
 
@@ -20,6 +22,7 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 @Injectable()
 export class GroqProvider implements AIProvider {
   readonly name = 'groq' as const;
+  private readonly logger = new Logger(GroqProvider.name);
 
   constructor(private readonly config: ConfigService) {}
 
@@ -40,8 +43,15 @@ export class GroqProvider implements AIProvider {
 
     const json = (await response.json()) as {
       choices?: { message?: { content?: string } }[];
+      usage?: unknown;
     };
     const content = json.choices?.[0]?.message?.content ?? '';
+    logTokenUsage(
+      this.logger,
+      this.name,
+      request.model,
+      usageFromOpenAI(json.usage),
+    );
     return { content, provider: this.name, model: request.model };
   }
 
@@ -70,15 +80,26 @@ export class GroqProvider implements AIProvider {
       return;
     }
 
+    let usage: unknown;
     for await (const data of readSseData(response.body)) {
       const parsed = JSON.parse(data) as {
         choices?: { delta?: { content?: string } }[];
+        usage?: unknown;
       };
+      if (parsed.usage) {
+        usage = parsed.usage;
+      }
       const text = parsed.choices?.[0]?.delta?.content ?? '';
       if (text.length > 0) {
         yield { type: 'chunk', content: text };
       }
     }
+    logTokenUsage(
+      this.logger,
+      this.name,
+      request.model,
+      usageFromOpenAI(usage),
+    );
   }
 
   async getAvailableModels(): Promise<string[]> {
@@ -94,6 +115,10 @@ export class GroqProvider implements AIProvider {
       })),
       stream,
     };
+    // Ask the API to include token usage in the final streamed chunk.
+    if (stream) {
+      body.stream_options = { include_usage: true };
+    }
     if (request.temperature !== undefined) {
       body.temperature = request.temperature;
     }

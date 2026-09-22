@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AIChunk,
   AIProvider,
   AIRequest,
   AIResult,
+  logTokenUsage,
   SUPPORTED_MODELS,
+  usageFromGemini,
 } from '../shared';
 
 const GEMINI_BASE_URL =
@@ -20,6 +22,7 @@ const GEMINI_BASE_URL =
 @Injectable()
 export class GeminiProvider implements AIProvider {
   readonly name = 'gemini' as const;
+  private readonly logger = new Logger(GeminiProvider.name);
 
   constructor(private readonly config: ConfigService) {}
 
@@ -47,11 +50,19 @@ export class GeminiProvider implements AIProvider {
 
     const json = (await response.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
+      usageMetadata?: unknown;
     };
     const content =
       json.candidates?.[0]?.content?.parts
         ?.map((part) => part.text ?? '')
         .join('') ?? '';
+
+    logTokenUsage(
+      this.logger,
+      this.name,
+      request.model,
+      usageFromGemini(json.usageMetadata),
+    );
 
     return { content, provider: this.name, model: request.model };
   }
@@ -88,10 +99,15 @@ export class GeminiProvider implements AIProvider {
       return;
     }
 
+    let usage: unknown;
     for await (const data of readSseData(response.body)) {
       const parsed = JSON.parse(data) as {
         candidates?: { content?: { parts?: { text?: string }[] } }[];
+        usageMetadata?: unknown;
       };
+      if (parsed.usageMetadata) {
+        usage = parsed.usageMetadata;
+      }
       const text =
         parsed.candidates?.[0]?.content?.parts
           ?.map((part) => part.text ?? '')
@@ -100,6 +116,7 @@ export class GeminiProvider implements AIProvider {
         yield { type: 'chunk', content: text };
       }
     }
+    logTokenUsage(this.logger, this.name, request.model, usageFromGemini(usage));
   }
 
   async getAvailableModels(): Promise<string[]> {
