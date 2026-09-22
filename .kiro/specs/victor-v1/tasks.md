@@ -63,10 +63,10 @@
   - **Feature: victor-v1, Property 8: Delete cascades to messages**
   - **Validates: Requirements 3.4**
 
-- [ ] 6. Checkpoint - Make sure all tests are passing
+- [x] 6. Checkpoint - Make sure all tests are passing
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement AI provider abstraction and codec
+- [-] 7. Implement AI provider abstraction and codec
 - [ ] 7.1 Implement AIProvider interface and three providers
   - Implement `GeminiProvider`, `GroqProvider`, `OpenRouterProvider` with `generate()`, `stream()`, `getAvailableModels()`, reading credentials from env
   - _Requirements: 5.1, 5.2, 5.5_
