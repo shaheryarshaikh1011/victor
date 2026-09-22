@@ -138,4 +138,53 @@ export const apiClient = {
   listMessages(conversationId: string): Promise<Message[]> {
     return request<Message[]>(`/conversations/${conversationId}/messages`);
   },
+
+  /**
+   * Opens the SSE send stream for a conversation. Returns the raw `Response`
+   * whose body carries the ordered assistant chunks (Requirements 7.1, 7.2).
+   * The session token is attached; provider credentials are never sent.
+   */
+  streamSend(conversationId: string, content: string): Promise<Response> {
+    return openStream(`/conversations/${conversationId}/messages`, { content });
+  },
+
+  /**
+   * Opens the SSE regenerate stream for an assistant message, requesting a new
+   * reply for the preceding user message (Requirement 8.4).
+   */
+  streamRegenerate(
+    conversationId: string,
+    messageId: string,
+  ): Promise<Response> {
+    return openStream(
+      `/conversations/${conversationId}/messages/${messageId}/regenerate`,
+      undefined,
+    );
+  },
 };
+
+/** Opens an authenticated POST stream, throwing {@link ApiError} on failure. */
+async function openStream(
+  path: string,
+  body: unknown,
+): Promise<Response> {
+  const headers: Record<string, string> = { Accept: 'text/event-stream' };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const token = getAccessToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(response.status, await extractErrorMessage(response));
+  }
+  return response;
+}

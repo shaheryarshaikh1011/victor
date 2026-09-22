@@ -141,11 +141,11 @@
   - Build provider/model selection form calling the settings endpoints
   - _Requirements: 2.2, 2.3_
 
-- [ ] 14. Implement chat interface
-- [ ] 14.1 Implement chat page shell and conversation sidebar
+- [x] 14. Implement chat interface
+- [x] 14.1 Implement chat page shell and conversation sidebar
   - Build `/chat` with `ConversationSidebar` (new conversation, delete conversation, collapsible on mobile), `MessageList`, and `MessageInput`
   - _Requirements: 8.1, 8.5, 3.1, 3.4_
-- [ ] 14.2 Implement message rendering, streaming consumption, and controls
+- [x] 14.2 Implement message rendering, streaming consumption, and controls
   - Render messages with role indicators; consume SSE with loading/error states; implement copy and regenerate controls
   - _Requirements: 8.2, 8.3, 8.4, 7.3, 7.4_
 - [ ]* 14.3 Write property test for message rendering with role indicator
