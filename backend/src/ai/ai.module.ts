@@ -4,11 +4,12 @@ import { GroqProvider } from './groq.provider';
 import { OpenRouterProvider } from './openrouter.provider';
 import { AIRequestCodec } from './ai-request.codec';
 import { AIRouter } from './ai-router';
+import { AIService } from './ai.service';
 
 /**
- * AIModule provides the AI provider implementations, the request codec, and the
- * AIRouter (selection + bounded fallback). The AIService facade is added in a
- * subsequent task (9) and will consume the AIRouter exported here.
+ * AIModule provides the AI provider implementations, the request codec, the
+ * AIRouter (selection + bounded fallback), and the AIService facade that
+ * backend callers depend on for generation and streaming.
  */
 @Module({
   providers: [
@@ -17,6 +18,7 @@ import { AIRouter } from './ai-router';
     OpenRouterProvider,
     AIRequestCodec,
     AIRouter,
+    AIService,
   ],
   exports: [
     GeminiProvider,
@@ -24,6 +26,7 @@ import { AIRouter } from './ai-router';
     OpenRouterProvider,
     AIRequestCodec,
     AIRouter,
+    AIService,
   ],
 })
 export class AIModule {}

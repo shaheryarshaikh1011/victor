@@ -94,8 +94,8 @@
   - **Feature: victor-v1, Property 14: Bounded ordered provider fallback**
   - **Validates: Requirements 6.2, 6.3, 6.4**
 
-- [ ] 9. Implement AIService facade
-- [ ] 9.1 Implement AIService generate and stream over AIRouter
+- [x] 9. Implement AIService facade
+- [x] 9.1 Implement AIService generate and stream over AIRouter
   - Expose `generate()` and `stream()` delegating to the AIRouter
   - _Requirements: 5.1_
 

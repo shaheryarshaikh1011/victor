@@ -4,3 +4,4 @@ export * from './groq.provider';
 export * from './openrouter.provider';
 export * from './ai-request.codec';
 export * from './ai-router';
+export * from './ai.service';
