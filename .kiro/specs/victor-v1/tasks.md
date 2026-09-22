@@ -16,12 +16,12 @@
   - Add indexes on `conversations.userId` and `messages(conversationId, createdAt)`; enable `pgvector` extension (unused in V1)
   - _Requirements: 3.4, 4.3_
 
-- [ ] 3. Implement authentication and request-context user id
-- [ ] 3.1 Implement SupabaseAuthGuard and user-id extraction
+- [x] 3. Implement authentication and request-context user id
+- [x] 3.1 Implement SupabaseAuthGuard and user-id extraction
   - Verify the bearer token via Supabase, attach `Authenticated_User_Id` to request context, reject missing/invalid tokens with 401
   - Ensure any `userId` in request bodies is ignored in favor of the session-derived id
   - _Requirements: 1.3, 1.4, 1.5_
-- [ ] 3.2 Implement signup/login flows against Supabase auth
+- [x] 3.2 Implement signup/login flows against Supabase auth
   - Wire signup (create profile) and login (session token) paths; return conflict on duplicate email
   - _Requirements: 1.1, 1.2, 1.3_
 - [ ]* 3.3 Write property test for auth rejection
