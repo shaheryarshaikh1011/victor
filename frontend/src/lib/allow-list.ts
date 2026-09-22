@@ -8,8 +8,8 @@
 import type { AIProviderName } from './types';
 
 export const SUPPORTED_MODELS: Record<AIProviderName, string[]> = {
-  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro'],
-  groq: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
+  gemini: ['gemini-3.6-flash', 'gemini-2.5-pro'],
+  groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
   openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet'],
 };
 

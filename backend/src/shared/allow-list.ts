@@ -8,8 +8,8 @@ import { AIProviderName } from './types';
  * the default model env vars documented in `.env.example`.
  */
 export const SUPPORTED_MODELS: Readonly<Record<AIProviderName, readonly string[]>> = {
-  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro'],
-  groq: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
+  gemini: ['gemini-3.6-flash', 'gemini-2.5-pro'],
+  groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
   openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet'],
 } as const;
 
@@ -19,7 +19,7 @@ export const SUPPORTED_PROVIDERS = Object.keys(
 ) as AIProviderName[];
 
 /** The default provider selected when a user has no explicit setting. */
-export const DEFAULT_PROVIDER: AIProviderName = 'gemini';
+export const DEFAULT_PROVIDER: AIProviderName = 'groq';
 
 /** The default model for the default provider. */
 export const DEFAULT_MODEL: string = SUPPORTED_MODELS[DEFAULT_PROVIDER][0];
