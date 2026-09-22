@@ -34,8 +34,8 @@
   - Cover signup happy path, duplicate-email conflict, and login session establishment
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 4. Implement users profile and settings module
-- [ ] 4.1 Implement UsersService and endpoints
+- [x] 4. Implement users profile and settings module
+- [x] 4.1 Implement UsersService and endpoints
   - Implement `GET /users/me`, `GET /users/me/settings`, `PATCH /users/me/settings` with DTO validation against the allow-list
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 - [ ]* 4.2 Write property test for settings round trip
