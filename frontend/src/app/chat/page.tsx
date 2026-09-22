@@ -106,9 +106,22 @@ export default function ChatPage() {
     [],
   );
 
+  /** Reloads persisted messages so client ids match backend UUIDs. */
+  const reloadMessages = useCallback(async (conversationId: string) => {
+    const loaded = await apiClient.listMessages(conversationId);
+    setMessages(
+      loaded.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        status: 'complete' as const,
+      })),
+    );
+  }, []);
+
   /** Consumes an SSE stream into a placeholder assistant message. */
   const consumeStream = useCallback(
-    async (open: () => Promise<Response>) => {
+    async (conversationId: string, open: () => Promise<Response>) => {
       const placeholderId = `pending-${Date.now()}`;
       setStreaming(true);
       setMessages((prev) => [
@@ -148,6 +161,9 @@ export default function ChatPage() {
               m.id === placeholderId ? { ...m, status: 'complete' } : m,
             ),
           );
+          // Replace placeholder ids with persisted UUIDs so controls like
+          // regenerate operate on real message ids.
+          await reloadMessages(conversationId);
         }
       } catch (err) {
         setMessages((prev) =>
@@ -160,7 +176,7 @@ export default function ChatPage() {
         setStreaming(false);
       }
     },
-    [],
+    [reloadMessages],
   );
 
   const handleSend = useCallback(
@@ -176,7 +192,9 @@ export default function ChatPage() {
           status: 'complete',
         },
       ]);
-      await consumeStream(() => apiClient.streamSend(activeId, content));
+      await consumeStream(activeId, () =>
+        apiClient.streamSend(activeId, content),
+      );
     },
     [activeId, consumeStream],
   );
@@ -185,7 +203,7 @@ export default function ChatPage() {
     async (messageId: string) => {
       if (!activeId) return;
       setError(null);
-      await consumeStream(() =>
+      await consumeStream(activeId, () =>
         apiClient.streamRegenerate(activeId, messageId),
       );
     },
