@@ -6,12 +6,12 @@
   - Configure ESLint, Prettier, `tsconfig`, and Jest with `fast-check` in both packages
   - _Requirements: 5.5_
 
-- [ ] 2. Define shared types and database schema
-- [ ] 2.1 Create shared TypeScript domain types
+- [x] 2. Define shared types and database schema
+- [x] 2.1 Create shared TypeScript domain types
   - Define `Profile`, `UserSettings`, `Conversation`, `Message`, `AIRequest`, `AIResult`, `AIChunk`, `AIProvider` interfaces
   - Define the supported `(provider, model)` allow-list constant
   - _Requirements: 2.3, 4.1, 5.2_
-- [ ] 2.2 Create Supabase SQL migrations
+- [x] 2.2 Create Supabase SQL migrations
   - Create `profiles`, `user_settings`, `conversations`, `messages` tables with FKs and `ON DELETE CASCADE` from conversations to messages
   - Add indexes on `conversations.userId` and `messages(conversationId, createdAt)`; enable `pgvector` extension (unused in V1)
   - _Requirements: 3.4, 4.3_
