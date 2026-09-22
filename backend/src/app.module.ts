@@ -3,10 +3,12 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth';
 import { UsersModule } from './users';
 import { ConversationsModule } from './conversations';
+import { MessagesModule } from './messages';
+import { AIModule } from './ai';
 
 /**
- * Root application module. Additional feature modules (messages, ai) are added
- * in subsequent tasks.
+ * Root application module wiring the auth, users, conversations, ai, and
+ * messages feature modules.
  */
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { ConversationsModule } from './conversations';
     AuthModule,
     UsersModule,
     ConversationsModule,
+    AIModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

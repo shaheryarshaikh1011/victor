@@ -99,11 +99,11 @@
   - Expose `generate()` and `stream()` delegating to the AIRouter
   - _Requirements: 5.1_
 
-- [ ] 10. Implement messages module with persistence and streaming
-- [ ] 10.1 Implement MessagesService persistence and ordered reads
+- [x] 10. Implement messages module with persistence and streaming
+- [x] 10.1 Implement MessagesService persistence and ordered reads
   - Persist user and assistant messages with correct roles; list messages ordered by createdAt ascending; enforce conversation ownership
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
-- [ ] 10.2 Implement SSE send and regenerate endpoints
+- [x] 10.2 Implement SSE send and regenerate endpoints
   - Stream assistant reply as ordered chunks; persist assistant content equal to concatenated chunks; regenerate replies to the preceding user message
   - _Requirements: 7.1, 7.2, 8.4_
 - [ ]* 10.3 Write property test for message role/content persistence
