@@ -66,11 +66,11 @@
 - [x] 6. Checkpoint - Make sure all tests are passing
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 7. Implement AI provider abstraction and codec
-- [ ] 7.1 Implement AIProvider interface and three providers
+- [x] 7. Implement AI provider abstraction and codec
+- [x] 7.1 Implement AIProvider interface and three providers
   - Implement `GeminiProvider`, `GroqProvider`, `OpenRouterProvider` with `generate()`, `stream()`, `getAvailableModels()`, reading credentials from env
   - _Requirements: 5.1, 5.2, 5.5_
-- [ ] 7.2 Implement AIRequestCodec (encode/decode)
+- [x] 7.2 Implement AIRequestCodec (encode/decode)
   - Implement provider payload encode/decode so decode(encode(request)) is equivalent to the original
   - _Requirements: 5.3_
 - [ ]* 7.3 Write property test for AI request payload round trip
