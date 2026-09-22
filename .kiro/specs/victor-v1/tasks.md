@@ -116,7 +116,7 @@
   - **Feature: victor-v1, Property 15: Streaming chunks reassemble to persisted content**
   - **Validates: Requirements 7.1, 7.2**
 
-- [-] 11. Implement validation, rate limiting, and error handling
+- [x] 11. Implement validation, rate limiting, and error handling
 - [x] 11.1 Add DTO validation, throttler, and global exception filter
   - Apply `class-validator` DTOs (reject invalid bodies with no persistence), per-user throttling on AI/message endpoints (429), and a global filter that strips stack details and logs errors
   - _Requirements: 9.1, 9.2, 9.3_
@@ -133,11 +133,11 @@
 - [ ] 12. Checkpoint - Make sure all tests are passing
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Implement frontend auth, settings, and API client
-- [ ] 13.1 Implement API client and auth pages
+- [x] 13. Implement frontend auth, settings, and API client
+- [x] 13.1 Implement API client and auth pages
   - Build `apiClient` that attaches the session token (never provider keys); build `/login` and `/signup` pages wired to Supabase auth
   - _Requirements: 1.3, 5.4_
-- [ ] 13.2 Implement `/settings` page
+- [x] 13.2 Implement `/settings` page
   - Build provider/model selection form calling the settings endpoints
   - _Requirements: 2.2, 2.3_
 
