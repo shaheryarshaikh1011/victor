@@ -45,8 +45,8 @@
   - **Feature: victor-v1, Property 4: Unsupported settings rejected**
   - **Validates: Requirements 2.3**
 
-- [ ] 5. Implement conversations module with ownership enforcement
-- [ ] 5.1 Implement ConversationsService and endpoints
+- [x] 5. Implement conversations module with ownership enforcement
+- [x] 5.1 Implement ConversationsService and endpoints
   - Implement create, list, get-owned, and delete with a reusable ownership check returning 403 on non-owned access/mutation
   - Ensure delete removes the conversation and cascades to its messages
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
