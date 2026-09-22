@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   AIChunk,
   AIProvider,
@@ -43,6 +43,7 @@ const FALLBACK_ORDER: readonly AIProviderName[] = [
  */
 @Injectable()
 export class AIRouter {
+  private readonly logger = new Logger(AIRouter.name);
   private readonly providers: Record<AIProviderName, AIProvider>;
 
   constructor(
@@ -60,6 +61,7 @@ export class AIRouter {
    * Fallback providers use their first available model as the request model.
    */
   resolveProviderOrder(settings: UserSettings): {
+    name: AIProviderName;
     provider: AIProvider;
     model: string;
   }[] {
@@ -70,6 +72,7 @@ export class AIRouter {
     ];
 
     return orderedNames.map((name) => ({
+      name,
       provider: this.providers[name],
       model: name === primaryName ? settings.model : '',
     }));
@@ -87,13 +90,24 @@ export class AIRouter {
 
     for (const attempt of attempts) {
       try {
-        return await attempt.provider.generate(attempt.request);
+        this.logger.log(
+          `generate attempt provider=${attempt.name} model=${attempt.request.model}`,
+        );
+        const result = await attempt.provider.generate(attempt.request);
+        this.logger.log(
+          `generate success provider=${attempt.name} model=${attempt.request.model}`,
+        );
+        return result;
       } catch {
         // Provider failed or was rate limited; fall through to the next.
+        this.logger.warn(
+          `generate failed provider=${attempt.name} model=${attempt.request.model}`,
+        );
         continue;
       }
     }
 
+    this.logger.error('generate exhausted all providers');
     throw new AIUnavailableError();
   }
 
@@ -114,6 +128,9 @@ export class AIRouter {
       let produced = false;
       let failed = false;
 
+      this.logger.log(
+        `stream attempt provider=${attempt.name} model=${attempt.request.model}`,
+      );
       try {
         for await (const chunk of attempt.provider.stream(attempt.request)) {
           if (chunk.type === 'error') {
@@ -134,14 +151,21 @@ export class AIRouter {
       }
 
       if (!failed) {
+        this.logger.log(
+          `stream success provider=${attempt.name} model=${attempt.request.model}`,
+        );
         return;
       }
+      this.logger.warn(
+        `stream failed provider=${attempt.name} model=${attempt.request.model}`,
+      );
       if (produced) {
         return;
       }
       // No content produced yet; try the next provider.
     }
 
+    this.logger.error('stream exhausted all providers');
     yield { type: 'error', message: new AIUnavailableError().message };
   }
 
@@ -152,18 +176,32 @@ export class AIRouter {
   private async buildAttempts(
     request: AIRequest,
     settings: UserSettings,
-  ): Promise<{ provider: AIProvider; request: AIRequest }[]> {
+  ): Promise<
+    { name: AIProviderName; provider: AIProvider; request: AIRequest }[]
+  > {
     const order = this.resolveProviderOrder(settings);
-    const attempts: { provider: AIProvider; request: AIRequest }[] = [];
+    const attempts: {
+      name: AIProviderName;
+      provider: AIProvider;
+      request: AIRequest;
+    }[] = [];
 
-    for (const { provider, model } of order) {
+    for (const { name, provider, model } of order) {
       const resolvedModel =
         model !== '' ? model : (await provider.getAvailableModels())[0];
       attempts.push({
+        name,
         provider,
         request: { ...request, model: resolvedModel },
       });
     }
+
+    this.logger.log(
+      `resolved providers for user=${settings.userId}: ` +
+        attempts
+          .map((a) => `${a.name}(${a.request.model})`)
+          .join(' -> '),
+    );
 
     return attempts;
   }
