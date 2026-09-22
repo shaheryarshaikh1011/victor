@@ -12,7 +12,7 @@ import {
 import { Observable } from 'rxjs';
 import { CurrentUserId } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
-import { AIChunk, Message } from '../shared';
+import { AIChunk, Message, UserThrottlerGuard } from '../shared';
 import { MessagesService } from './messages.service';
 import { SendMessageDto } from './dto/message.dto';
 
@@ -28,7 +28,7 @@ import { SendMessageDto } from './dto/message.dto';
  * (Requirements 7.1, 7.2, 8.4).
  */
 @Controller('conversations/:id/messages')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(SupabaseAuthGuard, UserThrottlerGuard)
 export class MessagesController {
   constructor(private readonly messages: MessagesService) {}
 

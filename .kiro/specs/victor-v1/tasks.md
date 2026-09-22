@@ -116,8 +116,8 @@
   - **Feature: victor-v1, Property 15: Streaming chunks reassemble to persisted content**
   - **Validates: Requirements 7.1, 7.2**
 
-- [ ] 11. Implement validation, rate limiting, and error handling
-- [ ] 11.1 Add DTO validation, throttler, and global exception filter
+- [-] 11. Implement validation, rate limiting, and error handling
+- [x] 11.1 Add DTO validation, throttler, and global exception filter
   - Apply `class-validator` DTOs (reject invalid bodies with no persistence), per-user throttling on AI/message endpoints (429), and a global filter that strips stack details and logs errors
   - _Requirements: 9.1, 9.2, 9.3_
 - [ ]* 11.2 Write property test for invalid-body no-persistence
