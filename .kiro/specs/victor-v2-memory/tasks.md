@@ -98,16 +98,16 @@
   - Verify remember/forget/"what do you remember" phrasings are detected and non-command messages are not
   - _Requirements: 4.1, 4.2, 8.1_
 
-- [ ] 8. Memory retrieval and context building
-- [ ] 8.1 Implement MemoryRetriever
+- [x] 8. Memory retrieval and context building
+- [x] 8.1 Implement MemoryRetriever
   - Create `backend/src/memory/services/memory-retriever.service.ts` with `getRelevant(userId, query)` generating the query embedding and calling `matchMemories` (top-K + threshold), and `buildContext(userId, query)` returning a formatted block capped by `MAX_CONTEXT_MEMORIES` and `MAX_CONTEXT_CHARS`; returns empty context on any failure
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 11.1, 12.2_
 
-- [ ] 8.2 Write property test for scoped retrieval and bounded context
+- [x] 8.2 Write property test for scoped retrieval and bounded context
   - **Property: For any user and query, retrieved memories belong only to that user, all pass the similarity threshold, and the injected context never exceeds MAX_CONTEXT_MEMORIES/MAX_CONTEXT_CHARS**
   - **Validates: Requirements 2.3, 6.1, 6.2, 12.2**
 
-- [ ] 8.3 Write property test for last_accessed_at update on retrieval
+- [x] 8.3 Write property test for last_accessed_at update on retrieval
   - **Property: For any retrieved memory, its last_accessed_at is advanced to at or after the retrieval time**
   - **Validates: Requirements 6.4**
 

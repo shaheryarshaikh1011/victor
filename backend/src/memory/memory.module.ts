@@ -5,6 +5,7 @@ import { EmbeddingsModule } from '../embeddings';
 import { MemoryController } from './memory.controller';
 import { MemoryRepository } from './memory.repository';
 import { MemoryService } from './memory.service';
+import { MemoryRetriever } from './services/memory-retriever.service';
 
 /**
  * MemoryModule exposes the user-scoped memory CRUD/search API (Requirement 3)
@@ -18,7 +19,7 @@ import { MemoryService } from './memory.service';
 @Module({
   imports: [EmbeddingsModule, AuthModule, AIModule],
   controllers: [MemoryController],
-  providers: [MemoryRepository, MemoryService],
-  exports: [MemoryService],
+  providers: [MemoryRepository, MemoryService, MemoryRetriever],
+  exports: [MemoryService, MemoryRetriever],
 })
 export class MemoryModule {}
