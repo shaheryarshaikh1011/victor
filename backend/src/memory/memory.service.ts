@@ -177,6 +177,18 @@ export class MemoryService {
     }
   }
 
+  /**
+   * Soft-forget an owned memory: marks it superseded so it drops out of
+   * retrieval while remaining restorable from the memory page.
+   */
+  async forgetMemory(userId: string, id: string): Promise<void> {
+    const memory = await this.assertOwned(userId, id);
+    await this.repo.update(userId, id, {
+      status: 'superseded',
+      metadata: { ...memory.metadata, forgottenAt: new Date().toISOString() },
+    });
+  }
+
   /** Delete all of the caller's memories (Requirement 2.1). */
   async deleteAllMemories(userId: string): Promise<void> {
     await this.repo.deleteAll(userId);

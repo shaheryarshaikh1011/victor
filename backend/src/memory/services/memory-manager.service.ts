@@ -3,6 +3,7 @@ import { MemoryService } from '../memory.service';
 import { DetectedCommand, MemoryExtractor } from './memory-extractor.service';
 import { MemoryRetriever } from './memory-retriever.service';
 import { MemoryView } from '../memory.types';
+import { FORGET_MIN_SIMILARITY } from '../memory.constants';
 
 /**
  * Outcome of `handleUserMessage`. When `handled` is true the chat pipeline
@@ -158,7 +159,12 @@ export class MemoryManager {
       };
     }
 
-    const matches = await this.memories.getRelevantMemories(userId, query, 1);
+    const matches = await this.memories.getRelevantMemories(
+      userId,
+      query,
+      1,
+      FORGET_MIN_SIMILARITY,
+    );
     const target = matches[0];
     if (!target) {
       return {
@@ -167,7 +173,9 @@ export class MemoryManager {
       };
     }
 
-    await this.memories.deleteMemory(userId, target.id);
+    // Soft-forget: the memory leaves retrieval but can be restored from the
+    // memory page if the command hit the wrong fact.
+    await this.memories.forgetMemory(userId, target.id);
     return {
       handled: true,
       reply: `Done — I've forgotten that ${target.content}.`,

@@ -65,4 +65,25 @@ describe('MemoryExtractor.detectCommand', () => {
     expect(extractor.detectCommand('   ')).toBeNull();
     expect(extractor.detectCommand('Thanks for the help')).toBeNull();
   });
+
+  it('ignores incidental command words mid-sentence', () => {
+    expect(extractor.detectCommand('I always forget my keys')).toBeNull();
+    expect(
+      extractor.detectCommand('Do you remember when we talked about Rust?'),
+    ).toBeNull();
+    expect(extractor.detectCommand('Remember when we met?')).toBeNull();
+    expect(
+      extractor.detectCommand('I need to remember to buy milk, any tips?'),
+    ).toBeNull();
+    expect(extractor.detectCommand('what do you know about Python?')).toBeNull();
+  });
+
+  it('accepts a polite lead-in before the command', () => {
+    expect(extractor.detectCommand('Please remember I use vim')?.payload).toBe(
+      'I use vim',
+    );
+    expect(extractor.detectCommand('Hey Victor, forget my old address')?.type).toBe(
+      'forget',
+    );
+  });
 });

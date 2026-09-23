@@ -82,7 +82,10 @@ export class InMemoryMemoryRepository {
   ): Promise<MemoryMatch[]> {
     const now = new Date().toISOString();
     return [...this.rows.values()]
-      .filter((row) => row.userId === userId && row.embedding)
+      .filter(
+        (row) =>
+          row.userId === userId && row.status === 'active' && row.embedding,
+      )
       .map((row) => {
         const similarity = cosine(queryEmbedding, row.embedding as number[]);
         return { ...row, lastAccessedAt: now, similarity, score: similarity };

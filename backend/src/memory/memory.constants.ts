@@ -15,6 +15,12 @@ export const TOP_K = 8;
 /** Minimum cosine similarity for a memory to be considered relevant. */
 export const MIN_SIMILARITY = 0.75;
 
+/**
+ * Minimum cosine similarity for a forget command to act on a memory. Stricter
+ * than retrieval so a vague request never removes an unrelated memory.
+ */
+export const FORGET_MIN_SIMILARITY = 0.82;
+
 /** Cosine similarity at/above which a new memory reinforces an existing one. */
 export const DEDUP_SIMILARITY = 0.92;
 

@@ -86,6 +86,27 @@ describe('MemoryExtractor (Property: trivial/behavioral gating)', () => {
     );
   });
 
+  it('still extracts facts from messages that merely contain a pleasantry', async () => {
+    const extractor = new MemoryExtractor(
+      stubAI({
+        store: true,
+        content: 'User is vegetarian',
+        memoryType: 'personal_fact',
+        confidence: 0.9,
+      }),
+      stubUsers(),
+    );
+
+    const result = await extractor.extractFromExchange(
+      'user-1',
+      'conv-1',
+      "I'm vegetarian, thanks",
+      'Good to know!',
+    );
+
+    expect(result?.content).toBe('User is vegetarian');
+  });
+
   it('does not store behavioral candidates below the confidence threshold', async () => {
     await fc.assert(
       fc.asyncProperty(

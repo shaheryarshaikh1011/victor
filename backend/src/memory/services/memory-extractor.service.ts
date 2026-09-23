@@ -23,44 +23,62 @@ export interface ExtractionCandidate {
 }
 
 /**
+ * Optional lead-in allowed before a command trigger. Commands must appear at
+ * the start of the message so incidental phrasing ("I always forget my keys",
+ * "do you remember when...?") is treated as ordinary chat.
+ */
+const LEAD = String.raw`^\s*(?:(?:hey|ok(?:ay)?)\s+victor[,!\s]+)?(?:please\s+|can you\s+|could you\s+)?`;
+
+const command = (body: string): RegExp => new RegExp(LEAD + body, 'i');
+
+/**
  * Deterministic regex prefilters for explicit memory commands. Ordering
  * matters: recall ("what do you remember") and forget are checked before the
  * generic remember trigger so a mixed phrasing resolves to the more specific
  * intent.
  */
 const RECALL_PATTERNS: readonly RegExp[] = [
-  /\bwhat do you (?:remember|know)\b/i,
-  /\bwhat have you remembered\b/i,
-  /\bshow (?:me )?my memories\b/i,
-  /\blist (?:my )?memories\b/i,
+  command(String.raw`what do you (?:remember|know) about me\b`),
+  command(String.raw`what have you remembered\b`),
+  command(String.raw`(?:show|list) (?:me )?(?:all )?(?:of )?my memories\b`),
 ];
 
 const FORGET_PATTERNS: readonly RegExp[] = [
-  // "forget ..." but not the remember-phrasing "don't forget ...".
-  /(?<!don['’]?t )\bforget (?:that|about|my|the)?\b\s*(?<payload>.*)/i,
-  /\b(?:remove|delete|erase) (?:that|the|my)? ?memory\b\s*(?<payload>.*)/i,
-  /\bstop remembering\b\s*(?<payload>.*)/i,
+  command(String.raw`forget (?:that |about )?(?<payload>.+)`),
+  command(
+    String.raw`(?:remove|delete|erase) (?:that |the |my )?memory\b\s*(?:about |that |of )?(?<payload>.*)`,
+  ),
+  command(String.raw`stop remembering (?:that )?(?<payload>.+)`),
 ];
 
 const REMEMBER_PATTERNS: readonly RegExp[] = [
-  /\bremember (?:that|this|to)?\b\s*(?<payload>.*)/i,
-  /\bdon['’]?t forget (?:that|to|about)?\b\s*(?<payload>.*)/i,
-  /\bsave this\b[:]?\s*(?<payload>.*)/i,
-  /\bmake (?:a )?note (?:that|of|to)?\b\s*(?<payload>.*)/i,
-  /\bkeep in mind (?:that)?\b\s*(?<payload>.*)/i,
+  command(String.raw`remember (?:that |this:?\s*|to )?(?<payload>.+)`),
+  command(String.raw`don['’]?t forget (?:that |to |about )?(?<payload>.+)`),
+  command(String.raw`save this:?\s*(?<payload>.+)`),
+  command(String.raw`make (?:a )?note (?:that |of |to )?(?<payload>.+)`),
+  command(String.raw`keep in mind (?:that )?(?<payload>.+)`),
+  command(String.raw`note that (?<payload>.+)`),
 ];
 
 /**
+ * A remember/forget payload that reads as a question ("remember when we...?")
+ * is conversation, not a command.
+ */
+const QUESTION_PAYLOAD =
+  /^(?:when|what|how|why|who|where|which|if|whether)\b|\?\s*$/i;
+
+/**
  * Phrases that mark a message as trivial/ephemeral. Automatic extraction is
- * skipped when the user text is dominated by one of these (Requirement 5.2).
+ * skipped when the user text is one of these (Requirement 5.2). Greetings and
+ * acknowledgements only count when they are the entire message, so
+ * "I'm vegetarian, thanks" is still considered for extraction.
  */
 const TRIVIAL_PATTERNS: readonly RegExp[] = [
-  /\bi['’]?m hungry\b/i,
-  /\bi['’]?m (?:tired|bored|sleepy)\b/i,
+  /^\s*i['’]?m (?:hungry|tired|bored|sleepy)[\s!.]*$/i,
   /\bwhat['’]?s the weather\b/i,
   /\btell me a joke\b/i,
   /\bwhat time is it\b/i,
-  /\bhello\b|\bhi\b|\bhey\b|\bthanks?\b|\bthank you\b|\bok(?:ay)?\b/i,
+  /^\s*(?:hello|hi|hey|yo|thanks?|thank you|thx|ok(?:ay)?|cool|nice|great|lol|yes|no|sure)[\s!.?]*$/i,
 ];
 
 /** Attributes we never auto-infer as memories (Requirement 5.4). */
@@ -111,23 +129,34 @@ export class MemoryExtractor {
       }
     }
 
-    for (const pattern of FORGET_PATTERNS) {
-      const match = pattern.exec(trimmed);
-      if (match) {
-        return { type: 'forget', payload: (match.groups?.payload ?? '').trim() };
-      }
+    const forget = this.matchPayload(FORGET_PATTERNS, trimmed);
+    if (forget !== null) {
+      return { type: 'forget', payload: forget };
     }
 
-    for (const pattern of REMEMBER_PATTERNS) {
-      const match = pattern.exec(trimmed);
-      if (match) {
-        return {
-          type: 'remember',
-          payload: (match.groups?.payload ?? '').trim(),
-        };
-      }
+    const remember = this.matchPayload(REMEMBER_PATTERNS, trimmed);
+    if (remember !== null) {
+      return { type: 'remember', payload: remember };
     }
 
+    return null;
+  }
+
+  /**
+   * Returns the payload of the first matching pattern, or null when nothing
+   * matches or the payload reads as a question (ordinary conversation).
+   */
+  private matchPayload(
+    patterns: readonly RegExp[],
+    text: string,
+  ): string | null {
+    for (const pattern of patterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        const payload = (match.groups?.payload ?? '').trim();
+        return QUESTION_PAYLOAD.test(payload) ? null : payload;
+      }
+    }
     return null;
   }
 
