@@ -5,7 +5,7 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-postgres",
-        "postgresql://postgres.ksiugzometwucqpbywft:shaheryar10112@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+        "postgresql://postgres.ksiugzometwucqpbywft:shaheryar10112@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=no-verify"
       ],
       "disabled": false,
       "autoApprove": []
