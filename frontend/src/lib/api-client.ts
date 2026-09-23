@@ -10,10 +10,14 @@
 import { getAccessToken } from './session';
 import type {
   Conversation,
+  CreateMemoryInput,
   Message,
+  MemoryType,
+  MemoryView,
   Profile,
   SessionResult,
   SignupResult,
+  UpdateMemoryInput,
   UpdateSettingsInput,
   UserSettings,
 } from './types';
@@ -160,6 +164,49 @@ export const apiClient = {
       `/conversations/${conversationId}/messages/${messageId}/regenerate`,
       undefined,
     );
+  },
+
+  // --- Memory (Requirement 3) ---
+  /**
+   * List the caller's memories with optional type and text-search filtering
+   * (Requirements 3.1, 3.2). The response is the API-safe `MemoryView` and
+   * never includes embeddings.
+   */
+  listMemories(
+    params: { memoryType?: MemoryType; search?: string } = {},
+  ): Promise<MemoryView[]> {
+    const query = new URLSearchParams();
+    if (params.memoryType) {
+      query.set('memory_type', params.memoryType);
+    }
+    if (params.search) {
+      query.set('search', params.search);
+    }
+    const suffix = query.toString();
+    return request<MemoryView[]>(`/memory${suffix ? `?${suffix}` : ''}`);
+  },
+
+  getMemory(id: string): Promise<MemoryView> {
+    return request<MemoryView>(`/memory/${id}`);
+  },
+
+  createMemory(input: CreateMemoryInput): Promise<MemoryView> {
+    return request<MemoryView>('/memory', { method: 'POST', body: input });
+  },
+
+  updateMemory(id: string, input: UpdateMemoryInput): Promise<MemoryView> {
+    return request<MemoryView>(`/memory/${id}`, {
+      method: 'PATCH',
+      body: input,
+    });
+  },
+
+  deleteMemory(id: string): Promise<void> {
+    return request<void>(`/memory/${id}`, { method: 'DELETE' });
+  },
+
+  deleteAllMemories(): Promise<void> {
+    return request<void>('/memory', { method: 'DELETE' });
   },
 };
 

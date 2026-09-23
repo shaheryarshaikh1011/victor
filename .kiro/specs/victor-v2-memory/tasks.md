@@ -129,20 +129,20 @@
   - **Property: For any forget command that matches no stored memory above threshold, the manager reports nothing matched and no memory is deleted or invalidated**
   - **Validates: Requirements 4.3**
 
-- [ ] 10. Checkpoint - Make sure all tests pass
+- [x] 10. Checkpoint - Make sure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Frontend memory management UI
-- [ ] 11.1 Add memory types and API client methods
+- [-] 11. Frontend memory management UI
+- [x] 11.1 Add memory types and API client methods
   - In `frontend/src/lib/types.ts` add `MemoryView`, `MemoryType`, `Importance`
   - In `frontend/src/lib/api-client.ts` add `listMemories` (type/search params), `getMemory`, `createMemory`, `updateMemory`, `deleteMemory`, `deleteAllMemories`
   - _Requirements: 3.1, 9.1_
 
-- [ ] 11.2 Build the /memory route
+- [x] 11.2 Build the /memory route
   - Create `frontend/src/app/memory/page.tsx` listing memories with a search box, type filter, edit modal, per-item delete, and delete-all; display memory type, created date, last accessed, and importance; never render embeddings or internal fields
   - _Requirements: 9.1, 9.2_
 
-- [ ] 11.3 Write test for memory page rendering and filtering
+- [-] 11.3 Write test for memory page rendering and filtering
   - Verify list rendering shows type/created/last-accessed/importance and that type filter and search narrow results, with no embedding exposed
   - _Requirements: 9.1, 9.2_
 
