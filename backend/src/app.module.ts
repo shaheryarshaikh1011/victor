@@ -7,6 +7,8 @@ import { UsersModule } from './users';
 import { ConversationsModule } from './conversations';
 import { MessagesModule } from './messages';
 import { AIModule } from './ai';
+import { EmbeddingsModule } from './embeddings';
+import { MemoryModule } from './memory';
 import { AllExceptionsFilter } from './shared';
 
 /**
@@ -38,6 +40,8 @@ import { AllExceptionsFilter } from './shared';
     UsersModule,
     ConversationsModule,
     AIModule,
+    EmbeddingsModule,
+    MemoryModule,
     MessagesModule,
   ],
   providers: [

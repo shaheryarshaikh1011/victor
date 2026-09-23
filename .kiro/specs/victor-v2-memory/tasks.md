@@ -64,16 +64,16 @@
   - Verify explicit → high/0.95, auto preference/personal_fact/episodic → medium/0.6, behavioral gating by confidence threshold
   - _Requirements: 1.3, 1.4_
 
-- [ ] 5. Memory API (controller and DTOs)
-- [ ] 5.1 Implement memory DTOs
+- [x] 5. Memory API (controller and DTOs)
+- [x] 5.1 Implement memory DTOs
   - Create `backend/src/memory/dto/memory.dto.ts` with validated `CreateMemoryDto`, `UpdateMemoryDto`, and a `ListMemoryQueryDto` (optional `memory_type`, optional `search`); user id is never accepted from the body
   - _Requirements: 3.2, 3.3_
 
-- [ ] 5.2 Implement MemoryController
+- [x] 5.2 Implement MemoryController
   - Create `backend/src/memory/memory.controller.ts` `@Controller('memory')` guarded by `SupabaseAuthGuard`, using `@CurrentUserId()` and `ParseUUIDPipe`, exposing `GET /memory`, `GET /memory/:id`, `POST /memory`, `PATCH /memory/:id`, `DELETE /memory/:id`, `DELETE /memory` (delete all); returns `MemoryView`
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 5.3 Wire the MemoryModule and register in AppModule
+- [x] 5.3 Wire the MemoryModule and register in AppModule
   - Create `backend/src/memory/memory.module.ts` importing `EmbeddingsModule`, `AuthModule`, and `AIModule`; provide repository/service; export `MemoryService`
   - Register `MemoryModule` (and `EmbeddingsModule`) in `backend/src/app.module.ts`
   - _Requirements: 3.1, 3.4_
