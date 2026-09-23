@@ -20,6 +20,12 @@ export interface EmbeddingProvider {
   readonly name: string;
 
   /**
+   * Identifies the vector space this provider produces. Stored with each
+   * memory so vectors from different models are never compared.
+   */
+  readonly modelId: string;
+
+  /**
    * Produce an embedding for the given text.
    *
    * @returns a vector of length {@link EMBEDDING_DIMENSION}, or `null` on

@@ -21,6 +21,13 @@ export const MIN_SIMILARITY = 0.75;
  */
 export const FORGET_MIN_SIMILARITY = 0.82;
 
+/**
+ * Cosine similarity at/above which a new same-type preference/personal fact is
+ * treated as an update to an existing one (same topic, different value) and
+ * supersedes it. Below this the two memories are unrelated and both stay.
+ */
+export const CONFLICT_SIMILARITY = 0.8;
+
 /** Cosine similarity at/above which a new memory reinforces an existing one. */
 export const DEDUP_SIMILARITY = 0.92;
 

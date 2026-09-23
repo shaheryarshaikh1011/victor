@@ -57,6 +57,15 @@ export interface AIRequest {
   model: string;
   messages: { role: AIMessageRole; content: string }[];
   temperature?: number;
+  /** Aborts the upstream call, e.g. when the client disconnects. */
+  signal?: AbortSignal;
+}
+
+/** Token usage reported by a provider for one request. */
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 /** A completed (non-streamed) AI response. */
@@ -64,12 +73,26 @@ export interface AIResult {
   content: string;
   provider: AIProviderName;
   model: string;
+  usage?: TokenUsage;
 }
 
-/** A single streamed unit from an AI provider. */
+/**
+ * A single streamed unit from an AI provider. `usage` is emitted once at the
+ * end of a successful stream and is consumed by AIService (never sent to the
+ * client).
+ */
 export type AIChunk =
   | { type: 'chunk'; content: string }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  | {
+      type: 'usage';
+      provider: AIProviderName;
+      model: string;
+      usage: TokenUsage;
+    };
+
+/** What an AI call was for; recorded with its token usage. */
+export type AIUsageKind = 'chat' | 'extract' | 'command' | 'summary' | 'title';
 
 /**
  * The AIProvider interface implemented by GeminiProvider, GroqProvider, and

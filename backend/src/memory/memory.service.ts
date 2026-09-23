@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { EmbeddingService } from '../embeddings/embedding.service';
 import {
+  CONFLICT_SIMILARITY,
   DEDUP_SIMILARITY,
   MIN_SIMILARITY,
   TOP_K,
@@ -91,6 +92,7 @@ export class MemoryService {
       importance,
       confidence,
       embedding,
+      embeddingModel: this.embeddings.modelId,
     });
     return this.toView(created);
   }
@@ -135,6 +137,7 @@ export class MemoryService {
       embedding,
       k,
       minSimilarity,
+      this.embeddings.modelId,
     );
     return matches.map((match) => this.toView(match));
   }
@@ -157,7 +160,9 @@ export class MemoryService {
 
     const updated = await this.repo.update(userId, id, {
       ...changes,
-      ...(embedding !== undefined ? { embedding } : {}),
+      ...(embedding !== undefined
+        ? { embedding, embeddingModel: this.embeddings.modelId }
+        : {}),
     });
     if (!updated) {
       throw new NotFoundException('Memory not found');
@@ -189,6 +194,32 @@ export class MemoryService {
     });
   }
 
+  /**
+   * Re-embeds up to `limit` memories whose vector is missing or came from a
+   * different embedding model, so switching providers never silently breaks
+   * retrieval. Returns how many memories were re-embedded.
+   */
+  async reembedStale(limit: number): Promise<number> {
+    const stale = await this.repo.listStaleEmbeddings(
+      this.embeddings.modelId,
+      limit,
+    );
+    let count = 0;
+    for (const memory of stale) {
+      const embedding = await this.embeddings.embed(memory.content);
+      if (!embedding) {
+        // Provider unavailable; retry on the next run.
+        break;
+      }
+      await this.repo.update(memory.userId, memory.id, {
+        embedding,
+        embeddingModel: this.embeddings.modelId,
+      });
+      count += 1;
+    }
+    return count;
+  }
+
   /** Delete all of the caller's memories (Requirement 2.1). */
   async deleteAllMemories(userId: string): Promise<void> {
     await this.repo.deleteAll(userId);
@@ -216,7 +247,13 @@ export class MemoryService {
   ): Promise<Memory | null> {
     let nearest: MemoryMatch | undefined;
     try {
-      const matches = await this.repo.matchMemories(userId, embedding, 1, 0);
+      const matches = await this.repo.matchMemories(
+        userId,
+        embedding,
+        1,
+        0,
+        this.embeddings.modelId,
+      );
       nearest = matches[0];
     } catch (err) {
       // A failed similarity probe must not block memory creation.
@@ -237,6 +274,7 @@ export class MemoryService {
     }
 
     if (
+      nearest.similarity >= CONFLICT_SIMILARITY &&
       SUPERSEDING_TYPES.has(input.memoryType) &&
       nearest.memoryType === input.memoryType &&
       nearest.status === 'active'

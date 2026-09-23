@@ -76,14 +76,14 @@ describe('MemoryService (Property: dedup and conflict handling)', () => {
         const service = buildService(repo);
         const userId = 'user-1';
 
-        // Two distinct-but-same-type memories with low similarity conflict.
+        // Two distinct-but-same-type memories on the same topic conflict.
         const oldMem = await service.createMemory(userId, {
-          content: 'prefers dark mode always',
+          content: 'lives in Mumbai',
           memoryType: type,
           source: 'auto_extracted',
         });
         const newMem = await service.createMemory(userId, {
-          content: 'wants bright white light theme everywhere',
+          content: 'lives in Pune, India',
           memoryType: type,
           source: 'auto_extracted',
         });
@@ -98,5 +98,25 @@ describe('MemoryService (Property: dedup and conflict handling)', () => {
       }),
       { numRuns: 100 },
     );
+  });
+
+  it('keeps unrelated same-type memories side by side', async () => {
+    const repo = new InMemoryMemoryRepository();
+    const service = buildService(repo);
+    const userId = 'user-1';
+
+    const first = await service.createMemory(userId, {
+      content: 'zzz qqq xxx',
+      memoryType: 'preference',
+      source: 'auto_extracted',
+    });
+    await service.createMemory(userId, {
+      content: 'aaa bbb ccc',
+      memoryType: 'preference',
+      source: 'auto_extracted',
+    });
+
+    expect(repo.rows.size).toBe(2);
+    expect(repo.rows.get(first.id)?.status).toBe('active');
   });
 });

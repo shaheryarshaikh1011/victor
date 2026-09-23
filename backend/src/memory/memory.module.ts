@@ -7,6 +7,7 @@ import { MemoryController } from './memory.controller';
 import { MemoryRepository } from './memory.repository';
 import { MemoryService } from './memory.service';
 import { MemoryExtractor } from './services/memory-extractor.service';
+import { MemoryMaintenance } from './services/memory-maintenance.service';
 import { MemoryManager } from './services/memory-manager.service';
 import { MemoryRetriever } from './services/memory-retriever.service';
 
@@ -30,6 +31,7 @@ import { MemoryRetriever } from './services/memory-retriever.service';
     MemoryRetriever,
     MemoryExtractor,
     MemoryManager,
+    MemoryMaintenance,
   ],
   exports: [MemoryService, MemoryRetriever, MemoryManager],
 })

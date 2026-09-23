@@ -18,6 +18,7 @@ import {
 @Injectable()
 export class HashEmbeddingProvider implements EmbeddingProvider {
   readonly name = 'hash-embedding';
+  readonly modelId = 'hash:v1';
 
   async embed(text: string): Promise<number[] | null> {
     return this.embedSync(text);

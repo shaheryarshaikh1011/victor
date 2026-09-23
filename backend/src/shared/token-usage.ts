@@ -1,16 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { contextWindowFor } from './allow-list';
-import { AIProviderName } from './types';
-
-/**
- * Normalized token usage for a single AI request, independent of provider
- * response shape.
- */
-export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-}
+import { AIProviderName, TokenUsage } from './types';
 
 /**
  * Extracts token usage from an OpenAI-compatible `usage` block

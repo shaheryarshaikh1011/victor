@@ -40,8 +40,8 @@ export class MemoryRetriever {
    * Retrieve the memories most relevant to `query` for the caller
    * (Requirements 6.1, 6.2). Short queries and any failure short-circuit to an
    * empty list so retrieval never blocks or breaks a reply (Requirement 11.1).
-   * The `match_memories` call also advances `last_accessed_at` for the returned
-   * rows in the same round trip (Requirement 6.4).
+   * Retrieval is read-only; `buildContext` advances `last_accessed_at` for
+   * the memories it injects (Requirement 6.4).
    */
   async getRelevant(
     userId: string,
@@ -61,7 +61,13 @@ export class MemoryRetriever {
       if (!embedding) {
         return [];
       }
-      return await this.repo.matchMemories(userId, embedding, k, minSimilarity);
+      return await this.repo.matchMemories(
+        userId,
+        embedding,
+        k,
+        minSimilarity,
+        this.embeddings.modelId,
+      );
     } catch (err) {
       // No memory content is logged, only the failure (Requirement 12.1).
       this.logger.warn(`getRelevant failed: ${(err as Error).message}`);
@@ -78,7 +84,19 @@ export class MemoryRetriever {
   async buildContext(userId: string, query: string): Promise<string> {
     try {
       const matches = await this.getRelevant(userId, query);
-      return this.formatContext(matches);
+      const block = this.formatContext(matches);
+      if (block) {
+        // Advance recency off the response path (Requirement 6.4).
+        void this.repo
+          .touch(
+            userId,
+            matches.slice(0, MAX_CONTEXT_MEMORIES).map((m) => m.id),
+          )
+          .catch((err: Error) =>
+            this.logger.warn(`touch failed: ${err.message}`),
+          );
+      }
+      return block;
     } catch (err) {
       this.logger.warn(`buildContext failed: ${(err as Error).message}`);
       return '';

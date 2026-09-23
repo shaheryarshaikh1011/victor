@@ -33,6 +33,11 @@ export class EmbeddingService {
     this.logger.log(`Embedding provider selected: ${this.provider.name}`);
   }
 
+  /** The vector space of every embedding this service returns. */
+  get modelId(): string {
+    return this.provider.modelId;
+  }
+
   /**
    * Return an embedding for `text`, or `null` on failure. Identical normalized
    * inputs return cache-identical vectors.

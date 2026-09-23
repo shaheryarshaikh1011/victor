@@ -21,6 +21,7 @@ const EMBEDDING_MODEL = 'text-embedding-004';
 @Injectable()
 export class GeminiEmbeddingProvider implements EmbeddingProvider {
   readonly name = 'gemini-embedding';
+  readonly modelId = `gemini:${EMBEDDING_MODEL}`;
   private readonly logger = new Logger(GeminiEmbeddingProvider.name);
 
   constructor(private readonly config: ConfigService) {}

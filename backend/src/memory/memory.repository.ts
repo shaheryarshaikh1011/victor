@@ -65,6 +65,7 @@ export class MemoryRepository {
       importance: Importance;
       confidence: number;
       embedding: number[] | null;
+      embeddingModel: string | null;
     },
   ): Promise<Memory> {
     const now = new Date().toISOString();
@@ -80,6 +81,7 @@ export class MemoryRepository {
         confidence: input.confidence,
         status: 'active',
         embedding: input.embedding,
+        embedding_model: input.embedding ? input.embeddingModel : null,
         metadata: input.metadata ?? {},
         created_at: now,
         updated_at: now,
@@ -159,20 +161,23 @@ export class MemoryRepository {
 
   /**
    * Runs the user-scoped `match_memories` SQL function for semantic retrieval
-   * in a single round trip (Requirements 2.3, 12.2). Returns matches ordered by
-   * combined relevance score.
+   * in a single round trip (Requirements 2.3, 12.2). Only memories embedded by
+   * `embeddingModel` are compared, since vectors from different models are not
+   * comparable. Returns matches ordered by combined relevance score.
    */
   async matchMemories(
     userId: string,
     queryEmbedding: number[],
     k: number,
     minSimilarity: number,
+    embeddingModel: string,
   ): Promise<MemoryMatch[]> {
     const { data, error } = await this.supabase.admin.rpc('match_memories', {
       p_user_id: userId,
       p_query: queryEmbedding as unknown as string,
       p_k: k,
       p_min_sim: minSimilarity,
+      p_model: embeddingModel,
     });
 
     if (error) {
@@ -190,6 +195,49 @@ export class MemoryRepository {
   }
 
   /**
+   * Advances `last_accessed_at` for memories injected into a prompt
+   * (Requirement 6.4). Kept separate from `matchMemories` so retrieval stays a
+   * read and this write can run off the response path.
+   */
+  async touch(userId: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    const { error } = await this.supabase.admin.rpc('touch_memories', {
+      p_user_id: userId,
+      p_ids: ids,
+    });
+    if (error) {
+      throw new BadRequestException('Failed to touch memories');
+    }
+  }
+
+  /**
+   * Lists memories (across all users) whose embedding is missing or was made
+   * by a different model, for background re-embedding.
+   */
+  async listStaleEmbeddings(
+    embeddingModel: string,
+    limit: number,
+  ): Promise<{ id: string; userId: string; content: string }[]> {
+    const { data, error } = await this.supabase.admin
+      .from('memories')
+      .select('id, user_id, content')
+      .or(`embedding_model.is.null,embedding_model.neq."${embeddingModel}"`)
+      .limit(limit);
+
+    if (error) {
+      throw new BadRequestException('Failed to list stale embeddings');
+    }
+
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      userId: row.user_id as string,
+      content: row.content as string,
+    }));
+  }
+
+  /**
    * Applies a partial update to an owned memory in a single ownership-scoped
    * statement (`UPDATE ... WHERE id = ? AND user_id = ?`) (Requirement 2.1).
    * Returns null when no owned memory matched.
@@ -197,7 +245,10 @@ export class MemoryRepository {
   async update(
     userId: string,
     id: string,
-    changes: UpdateMemoryInput & { embedding?: number[] | null },
+    changes: UpdateMemoryInput & {
+      embedding?: number[] | null;
+      embeddingModel?: string | null;
+    },
   ): Promise<Memory | null> {
     const patch: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -209,7 +260,12 @@ export class MemoryRepository {
     if (changes.confidence !== undefined) patch.confidence = changes.confidence;
     if (changes.status !== undefined) patch.status = changes.status;
     if (changes.metadata !== undefined) patch.metadata = changes.metadata;
-    if (changes.embedding !== undefined) patch.embedding = changes.embedding;
+    if (changes.embedding !== undefined) {
+      patch.embedding = changes.embedding;
+      patch.embedding_model = changes.embedding
+        ? (changes.embeddingModel ?? null)
+        : null;
+    }
 
     const { data, error } = await this.supabase.admin
       .from('memories')

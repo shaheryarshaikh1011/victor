@@ -79,6 +79,8 @@ export class InMemoryMemoryRepository {
     queryEmbedding: number[],
     k: number,
     minSimilarity: number,
+    // Every test vector comes from the same stub model.
+    _embeddingModel?: string,
   ): Promise<MemoryMatch[]> {
     const now = new Date().toISOString();
     return [...this.rows.values()]
@@ -93,6 +95,10 @@ export class InMemoryMemoryRepository {
       .filter((row) => row.similarity >= minSimilarity)
       .sort((a, b) => b.score - a.score)
       .slice(0, k);
+  }
+
+  async touch(): Promise<void> {
+    // Recency is not asserted by the in-memory tests.
   }
 
   async update(
@@ -155,6 +161,8 @@ export class InMemoryMemoryRepository {
  * cosine ≈ 1 and distinct content produces low similarity.
  */
 export class StubEmbeddingService {
+  readonly modelId = 'stub:v1';
+
   async embed(text: string): Promise<number[] | null> {
     const normalized = text.trim().toLowerCase();
     const vec = new Array<number>(EMBEDDING_DIMENSION).fill(0);
