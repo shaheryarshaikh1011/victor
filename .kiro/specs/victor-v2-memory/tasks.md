@@ -16,22 +16,22 @@
   - Create `backend/src/memory/memory.constants.ts` with `TOP_K=8`, `MIN_SIMILARITY=0.75`, `DEDUP_SIMILARITY=0.92`, `BEHAVIORAL_MIN_CONFIDENCE=0.8`, `MAX_CONTEXT_MEMORIES=8`, `MAX_CONTEXT_CHARS=1200`, `EMBED_CACHE_SIZE=256`, `MIN_MESSAGE_LEN_FOR_RETRIEVAL`, and ranking weights, plus importance/confidence constants by type/source
   - _Requirements: 1.3, 1.4, 3.3, 12.2_
 
-- [ ] 2. Embedding module with pluggable provider
-- [ ] 2.1 Define embedding provider interface and types
+- [x] 2. Embedding module with pluggable provider
+- [x] 2.1 Define embedding provider interface and types
   - Create `backend/src/embeddings/embedding.types.ts` with `EmbeddingProvider` interface (`embed(text): Promise<number[] | null>`, dimension constant 768)
   - _Requirements: 10.1_
 
-- [ ] 2.2 Implement Gemini and hash embedding providers
+- [x] 2.2 Implement Gemini and hash embedding providers
   - Create `backend/src/embeddings/gemini-embedding.provider.ts` calling Gemini `text-embedding-004` (768 dims) using `GEMINI_API_KEY`, never leaking the key
   - Create `backend/src/embeddings/hash-embedding.provider.ts` producing a deterministic 768-dim vector for use when no embedding key is configured
   - _Requirements: 10.1, 11.1_
 
-- [ ] 2.3 Implement EmbeddingService with fallback and cache
+- [x] 2.3 Implement EmbeddingService with fallback and cache
   - Create `backend/src/embeddings/embedding.service.ts` selecting the provider (Gemini when key present, hash otherwise), returning `null` on failure, and using a bounded LRU cache keyed by SHA-256 of normalized text
   - Create `backend/src/embeddings/embeddings.module.ts` exporting `EmbeddingService`
   - _Requirements: 10.1, 11.1, 12.2_
 
-- [ ] 2.4 Write property test for embedding cache and fallback
+- [x] 2.4 Write property test for embedding cache and fallback
   - **Property: For any text, EmbeddingService returns a null result on provider failure and never throws; identical normalized inputs return cache-identical vectors**
   - **Validates: Requirements 11.1**
 
