@@ -2,13 +2,17 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Conversation } from '../shared';
 import { SupabaseService } from '../auth/supabase.service';
+import { AIService } from '../ai/ai.service';
 import { CreateConversationDto } from './dto/conversation.dto';
 
-const DEFAULT_TITLE = 'New Conversation';
+export const DEFAULT_TITLE = 'New Conversation';
+
+const TITLE_MAX_LENGTH = 60;
 
 /**
  * Owns conversation persistence scoped to the Authenticated_User_Id.
@@ -23,7 +27,12 @@ const DEFAULT_TITLE = 'New Conversation';
  */
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  private readonly logger = new Logger(ConversationsService.name);
+
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly ai: AIService,
+  ) {}
 
   async create(
     userId: string,
@@ -53,7 +62,7 @@ export class ConversationsService {
       .from('conversations')
       .select('id, user_id, title, created_at, updated_at')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+      .order('updated_at', { ascending: false });
 
     if (error) {
       throw new BadRequestException('Failed to list conversations');
@@ -67,6 +76,69 @@ export class ConversationsService {
     conversationId: string,
   ): Promise<Conversation> {
     return this.assertOwned(userId, conversationId);
+  }
+
+  /** Marks a conversation as active now so it sorts first in the list. */
+  async touch(conversationId: string): Promise<void> {
+    const { error } = await this.supabase.admin
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+    if (error) {
+      this.logger.warn(`touch failed: ${error.message}`);
+    }
+  }
+
+  /** Stores the rolling summary and the newest message time it covers. */
+  async saveSummary(
+    conversationId: string,
+    summary: string,
+    summaryUpto: string,
+  ): Promise<void> {
+    const { error } = await this.supabase.admin
+      .from('conversations')
+      .update({ summary, summary_upto: summaryUpto })
+      .eq('id', conversationId);
+    if (error) {
+      throw new BadRequestException('Failed to save conversation summary');
+    }
+  }
+
+  /**
+   * Replaces the default title with a short one generated from the first user
+   * message. Best-effort: failures leave the default title in place.
+   */
+  async autoTitle(
+    conversation: Conversation,
+    firstUserText: string,
+  ): Promise<void> {
+    if (conversation.title !== DEFAULT_TITLE) {
+      return;
+    }
+    try {
+      const raw = await this.ai.generateUtility(
+        conversation.userId,
+        'title',
+        'Write a short title (at most 6 words) for a conversation that ' +
+          'starts with the user message below. Output only the title, no ' +
+          'quotes or trailing punctuation.',
+        firstUserText.slice(0, 1000),
+      );
+      const title = raw
+        .split('\n')[0]
+        .replace(/^["'“”\s]+|["'“”.\s]+$/g, '')
+        .slice(0, TITLE_MAX_LENGTH);
+      if (!title) {
+        return;
+      }
+      await this.supabase.admin
+        .from('conversations')
+        .update({ title })
+        .eq('id', conversation.id)
+        .eq('title', DEFAULT_TITLE);
+    } catch (err) {
+      this.logger.warn(`autoTitle failed: ${(err as Error).message}`);
+    }
   }
 
   async delete(userId: string, conversationId: string): Promise<void> {
@@ -99,7 +171,7 @@ export class ConversationsService {
   ): Promise<Conversation> {
     const { data, error } = await this.supabase.admin
       .from('conversations')
-      .select('id, user_id, title, created_at, updated_at')
+      .select('id, user_id, title, created_at, updated_at, summary, summary_upto')
       .eq('id', conversationId)
       .maybeSingle();
 
@@ -124,13 +196,20 @@ export class ConversationsService {
     title: string;
     created_at: string;
     updated_at: string;
+    summary?: string | null;
+    summary_upto?: string | null;
   }): Conversation {
-    return {
+    const conversation: Conversation = {
       id: row.id,
       userId: row.user_id,
       title: row.title,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+    if (row.summary !== undefined) {
+      conversation.summary = row.summary;
+      conversation.summaryUpto = row.summary_upto ?? null;
+    }
+    return conversation;
   }
 }

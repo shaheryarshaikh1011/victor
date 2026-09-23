@@ -41,6 +41,18 @@ export class MemoryManager {
   ) {}
 
   /**
+   * Cheap synchronous check for an explicit memory command, used to decide
+   * whether the chat pipeline needs memory retrieval. False on any failure.
+   */
+  isCommand(text: string): boolean {
+    try {
+      return this.extractor.detectCommand(text) !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Detects and resolves an explicit memory command. Returns `{ handled:false }`
    * for ordinary chat or on any failure so the normal pipeline continues
    * (Requirements 4.1, 4.2, 4.3, 8.1, 8.2, 11.2).
@@ -174,7 +186,7 @@ export class MemoryManager {
     }
 
     // Soft-forget: the memory leaves retrieval but can be restored from the
-    // memory page if the command hit the wrong fact.
+    // memory API (status back to active) if the command hit the wrong fact.
     await this.memories.forgetMemory(userId, target.id);
     return {
       handled: true,

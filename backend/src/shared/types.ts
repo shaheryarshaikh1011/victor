@@ -41,6 +41,10 @@ export interface Conversation {
   title: string;
   createdAt: string;
   updatedAt: string;
+  /** Rolling summary of older turns (internal; set by the summarizer). */
+  summary?: string | null;
+  /** Creation time of the newest message covered by `summary`. */
+  summaryUpto?: string | null;
 }
 
 /** messages — a unit of chat content belonging to one conversation. */

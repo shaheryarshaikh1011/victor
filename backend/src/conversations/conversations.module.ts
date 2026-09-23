@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AIModule } from '../ai/ai.module';
 import { ConversationsController } from './conversations.controller';
 import { ConversationsService } from './conversations.service';
 
@@ -9,6 +10,7 @@ import { ConversationsService } from './conversations.service';
  * so the MessagesModule can reuse the ownership check.
  */
 @Module({
+  imports: [AIModule],
   controllers: [ConversationsController],
   providers: [ConversationsService],
   exports: [ConversationsService],
