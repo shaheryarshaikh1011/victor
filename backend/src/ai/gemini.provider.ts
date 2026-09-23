@@ -39,6 +39,7 @@ export class GeminiProvider implements AIProvider {
           'x-goog-api-key': apiKey,
         },
         body: JSON.stringify(body),
+        signal: request.signal,
       },
     );
 
@@ -57,14 +58,10 @@ export class GeminiProvider implements AIProvider {
         ?.map((part) => part.text ?? '')
         .join('') ?? '';
 
-    logTokenUsage(
-      this.logger,
-      this.name,
-      request.model,
-      usageFromGemini(json.usageMetadata),
-    );
+    const usage = usageFromGemini(json.usageMetadata);
+    logTokenUsage(this.logger, this.name, request.model, usage);
 
-    return { content, provider: this.name, model: request.model };
+    return { content, provider: this.name, model: request.model, usage };
   }
 
   async *stream(request: AIRequest): AsyncIterable<AIChunk> {
@@ -84,6 +81,7 @@ export class GeminiProvider implements AIProvider {
             'x-goog-api-key': apiKey,
           },
           body: JSON.stringify(body),
+          signal: request.signal,
         },
       );
     } catch (err) {
@@ -116,7 +114,16 @@ export class GeminiProvider implements AIProvider {
         yield { type: 'chunk', content: text };
       }
     }
-    logTokenUsage(this.logger, this.name, request.model, usageFromGemini(usage));
+    const finalUsage = usageFromGemini(usage);
+    logTokenUsage(this.logger, this.name, request.model, finalUsage);
+    if (finalUsage) {
+      yield {
+        type: 'usage',
+        provider: this.name,
+        model: request.model,
+        usage: finalUsage,
+      };
+    }
   }
 
   async getAvailableModels(): Promise<string[]> {

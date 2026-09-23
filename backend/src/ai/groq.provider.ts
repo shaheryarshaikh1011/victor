@@ -35,6 +35,7 @@ export class GroqProvider implements AIProvider {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(this.toBody(request, false)),
+      signal: request.signal,
     });
 
     if (!response.ok) {
@@ -46,13 +47,9 @@ export class GroqProvider implements AIProvider {
       usage?: unknown;
     };
     const content = json.choices?.[0]?.message?.content ?? '';
-    logTokenUsage(
-      this.logger,
-      this.name,
-      request.model,
-      usageFromOpenAI(json.usage),
-    );
-    return { content, provider: this.name, model: request.model };
+    const usage = usageFromOpenAI(json.usage);
+    logTokenUsage(this.logger, this.name, request.model, usage);
+    return { content, provider: this.name, model: request.model, usage };
   }
 
   async *stream(request: AIRequest): AsyncIterable<AIChunk> {
@@ -66,6 +63,7 @@ export class GroqProvider implements AIProvider {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify(this.toBody(request, true)),
+        signal: request.signal,
       });
     } catch (err) {
       yield { type: 'error', message: (err as Error).message };
@@ -94,12 +92,16 @@ export class GroqProvider implements AIProvider {
         yield { type: 'chunk', content: text };
       }
     }
-    logTokenUsage(
-      this.logger,
-      this.name,
-      request.model,
-      usageFromOpenAI(usage),
-    );
+    const finalUsage = usageFromOpenAI(usage);
+    logTokenUsage(this.logger, this.name, request.model, finalUsage);
+    if (finalUsage) {
+      yield {
+        type: 'usage',
+        provider: this.name,
+        model: request.model,
+        usage: finalUsage,
+      };
+    }
   }
 
   async getAvailableModels(): Promise<string[]> {
