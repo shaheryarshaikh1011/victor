@@ -1,6 +1,12 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createRemoteJWKSet, JWTVerifyGetKey, jwtVerify } from 'jose';
+
+/** The verified identity attached to a request. */
+export interface VerifiedUser {
+  id: string;
+}
 
 /**
  * Wraps the Supabase clients used by the Backend_API.
@@ -12,8 +18,11 @@ import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
  */
 @Injectable()
 export class SupabaseService implements OnModuleInit {
+  private readonly logger = new Logger(SupabaseService.name);
   private adminClient!: SupabaseClient;
   private anonClient!: SupabaseClient;
+  private jwks!: JWTVerifyGetKey;
+  private issuer!: string;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -28,6 +37,13 @@ export class SupabaseService implements OnModuleInit {
     this.anonClient = createClient(url, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    const base = url.replace(/\/+$/, '');
+    this.issuer = `${base}/auth/v1`;
+    // Cached and refreshed by jose; lets most requests skip a network call.
+    this.jwks = createRemoteJWKSet(
+      new URL(`${this.issuer}/.well-known/jwks.json`),
+    );
   }
 
   /** Privileged client (service-role). Never expose results containing keys. */
@@ -41,18 +57,45 @@ export class SupabaseService implements OnModuleInit {
   }
 
   /**
-   * Verifies a bearer access token and returns the associated user.
+   * Verifies a bearer access token and returns the associated user id.
    * Returns null when the token is missing or invalid.
+   *
+   * Tokens signed with the project's asymmetric keys are verified locally
+   * against the cached JWKS (no network round trip). Anything that cannot be
+   * verified locally — e.g. legacy HS256 tokens, or a JWKS fetch failure — is
+   * checked with Supabase Auth as before.
    */
-  async getUserFromToken(accessToken: string): Promise<User | null> {
+  async getUserFromToken(accessToken: string): Promise<VerifiedUser | null> {
     if (!accessToken) {
       return null;
     }
+
+    try {
+      const { payload } = await jwtVerify(accessToken, this.jwks, {
+        issuer: this.issuer,
+        audience: 'authenticated',
+      });
+      if (typeof payload.sub === 'string' && payload.sub) {
+        return { id: payload.sub };
+      }
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      // Definitive rejections: don't spend a network call on them.
+      if (
+        code === 'ERR_JWT_EXPIRED' ||
+        code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' ||
+        code === 'ERR_JWT_CLAIM_VALIDATION_FAILED'
+      ) {
+        return null;
+      }
+      this.logger.debug(`Local JWT verification unavailable (${code})`);
+    }
+
     const { data, error } = await this.adminClient.auth.getUser(accessToken);
     if (error || !data.user) {
       return null;
     }
-    return data.user;
+    return { id: data.user.id };
   }
 
   private requireEnv(key: string): string {

@@ -23,8 +23,20 @@ import { UpdateSettingsDto } from './dto/settings.dto';
  *   allow-list before persisting; unsupported pairs are rejected and existing
  *   settings are left unchanged (Requirements 2.2, 2.3).
  */
+/** How long a user's settings are served from memory. */
+const SETTINGS_TTL_MS = 60_000;
+
 @Injectable()
 export class UsersService {
+  /**
+   * Per-process settings cache. Settings are read several times per chat turn
+   * but change rarely; `updateSettings` invalidates the caller's entry.
+   */
+  private readonly settingsCache = new Map<
+    string,
+    { value: UserSettings; expiresAt: number }
+  >();
+
   constructor(private readonly supabase: SupabaseService) {}
 
   async getProfile(userId: string): Promise<Profile> {
@@ -47,6 +59,19 @@ export class UsersService {
   }
 
   async getSettings(userId: string): Promise<UserSettings> {
+    const cached = this.settingsCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+    const value = await this.loadSettings(userId);
+    this.settingsCache.set(userId, {
+      value,
+      expiresAt: Date.now() + SETTINGS_TTL_MS,
+    });
+    return value;
+  }
+
+  private async loadSettings(userId: string): Promise<UserSettings> {
     const { data, error } = await this.supabase.admin
       .from('user_settings')
       .select('user_id, provider, model, updated_at')
@@ -87,6 +112,7 @@ export class UsersService {
       );
     }
 
+    this.settingsCache.delete(userId);
     const updatedAt = new Date().toISOString();
     const { data, error } = await this.supabase.admin
       .from('user_settings')

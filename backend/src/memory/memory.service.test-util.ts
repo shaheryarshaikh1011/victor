@@ -79,8 +79,8 @@ export class InMemoryMemoryRepository {
     queryEmbedding: number[],
     k: number,
     minSimilarity: number,
-    // Every test vector comes from the same stub model.
-    _embeddingModel?: string,
+    // The embedding-model argument is ignored: every test vector comes from
+    // the same stub model.
   ): Promise<MemoryMatch[]> {
     const now = new Date().toISOString();
     return [...this.rows.values()]
