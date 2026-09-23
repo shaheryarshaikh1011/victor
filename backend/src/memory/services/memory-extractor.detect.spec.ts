@@ -1,5 +1,4 @@
 import { AIService } from '../../ai/ai.service';
-import { UsersService } from '../../users/users.service';
 import { MemoryExtractor } from './memory-extractor.service';
 
 /**
@@ -9,7 +8,6 @@ import { MemoryExtractor } from './memory-extractor.service';
 function buildExtractor(): MemoryExtractor {
   return new MemoryExtractor(
     {} as unknown as AIService,
-    {} as unknown as UsersService,
   );
 }
 

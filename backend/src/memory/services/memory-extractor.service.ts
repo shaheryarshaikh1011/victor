@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AIRequest, UserSettings } from '../../shared';
+import { AIUsageKind } from '../../shared';
 import { AIService } from '../../ai/ai.service';
-import { UsersService } from '../../users/users.service';
 import { BEHAVIORAL_MIN_CONFIDENCE } from '../memory.constants';
 import { CreateMemoryInput, MemoryType } from '../memory.types';
 
@@ -107,10 +106,7 @@ const SENSITIVE_PATTERNS: readonly RegExp[] = [
 export class MemoryExtractor {
   private readonly logger = new Logger(MemoryExtractor.name);
 
-  constructor(
-    private readonly ai: AIService,
-    private readonly users: UsersService,
-  ) {}
+  constructor(private readonly ai: AIService) {}
 
   /**
    * Deterministic prefilter that classifies a user message as a
@@ -171,9 +167,9 @@ export class MemoryExtractor {
       return '';
     }
     try {
-      const settings = await this.users.getSettings(userId);
       const reply = await this.askAI(
-        settings,
+        userId,
+        'command',
         'You rewrite a user instruction into a single concise third-person ' +
           'fact to store as a memory. Output only the fact, no quotes or ' +
           'preamble. If there is nothing to store, output NONE.',
@@ -203,9 +199,9 @@ export class MemoryExtractor {
       return '';
     }
     try {
-      const settings = await this.users.getSettings(userId);
       const reply = await this.askAI(
-        settings,
+        userId,
+        'command',
         'You turn a user request to forget something into a short search ' +
           'query describing the fact to remove. Output only the query.',
         raw,
@@ -283,8 +279,7 @@ export class MemoryExtractor {
 
     let candidate: ExtractionCandidate | null;
     try {
-      const settings = await this.users.getSettings(userId);
-      candidate = await this.classifyWithAI(settings, trimmed, aiText);
+      candidate = await this.classifyWithAI(userId, trimmed, aiText);
     } catch (err) {
       this.logger.warn(
         `extractFromExchange AI call failed: ${(err as Error).message}`,
@@ -315,7 +310,7 @@ export class MemoryExtractor {
    * and, if so, to return it as JSON. Returns null when the AI declines.
    */
   private async classifyWithAI(
-    settings: UserSettings,
+    userId: string,
     userText: string,
     aiText: string,
   ): Promise<ExtractionCandidate | null> {
@@ -328,8 +323,10 @@ export class MemoryExtractor {
       '"preference"|"personal_fact"|"episodic"|"behavioral", ' +
       '"confidence": number between 0 and 1}. If nothing should be stored, ' +
       'respond {"store": false}.';
-    const payload = `USER: ${userText}\nASSISTANT: ${aiText}`;
-    const reply = await this.askAI(settings, instruction, payload);
+    // The assistant reply is context only; long replies are clipped since the
+    // fact must come from the user's own words anyway.
+    const payload = `USER: ${userText}\nASSISTANT: ${aiText.slice(0, 1500)}`;
+    const reply = await this.askAI(userId, 'extract', instruction, payload);
     return this.parseCandidate(reply);
   }
 
@@ -392,21 +389,17 @@ export class MemoryExtractor {
     return SENSITIVE_PATTERNS.some((pattern) => pattern.test(text));
   }
 
-  /** Single non-streamed AI call via the shared provider abstraction. */
-  private async askAI(
-    settings: UserSettings,
+  /**
+   * Single non-streamed call on the cheap utility model; extraction and
+   * command normalization never need the user's (possibly expensive) chat
+   * model.
+   */
+  private askAI(
+    userId: string,
+    kind: AIUsageKind,
     system: string,
     user: string,
   ): Promise<string> {
-    const request: AIRequest = {
-      model: settings.model,
-      temperature: 0,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    };
-    const result = await this.ai.generate(request, settings);
-    return result.content;
+    return this.ai.generateUtility(userId, kind, system, user);
   }
 }

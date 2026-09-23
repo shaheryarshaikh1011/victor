@@ -30,6 +30,17 @@ const FALLBACK_ORDER: readonly AIProviderName[] = [
   'openrouter',
 ];
 
+/** Consecutive failures after which a provider is skipped for a while. */
+const BREAKER_THRESHOLD = 3;
+
+/** How long a tripped provider is skipped before it is tried again. */
+const BREAKER_COOLDOWN_MS = 60_000;
+
+interface ProviderHealth {
+  failures: number;
+  openUntil: number;
+}
+
 /**
  * AIRouter — selects the AI_Provider and model configured for a user and
  * performs bounded, ordered fallback across the remaining providers.
@@ -45,6 +56,11 @@ const FALLBACK_ORDER: readonly AIProviderName[] = [
 export class AIRouter {
   private readonly logger = new Logger(AIRouter.name);
   private readonly providers: Record<AIProviderName, AIProvider>;
+  /**
+   * Circuit breaker state per provider. A provider that keeps failing is
+   * skipped until its cooldown expires, so requests stop paying its latency.
+   */
+  private readonly health = new Map<AIProviderName, ProviderHealth>();
 
   constructor(
     gemini: GeminiProvider,
@@ -97,12 +113,17 @@ export class AIRouter {
         this.logger.log(
           `generate success provider=${attempt.name} model=${attempt.request.model}`,
         );
+        this.recordSuccess(attempt.name);
         return result;
-      } catch {
+      } catch (err) {
+        if (request.signal?.aborted) {
+          throw err;
+        }
         // Provider failed or was rate limited; fall through to the next.
         this.logger.warn(
           `generate failed provider=${attempt.name} model=${attempt.request.model}`,
         );
+        this.recordFailure(attempt.name);
         continue;
       }
     }
@@ -133,6 +154,10 @@ export class AIRouter {
       );
       try {
         for await (const chunk of attempt.provider.stream(attempt.request)) {
+          if (chunk.type === 'usage') {
+            yield chunk;
+            continue;
+          }
           if (chunk.type === 'error') {
             failed = true;
             // If content already streamed, we cannot restart on another
@@ -154,11 +179,17 @@ export class AIRouter {
         this.logger.log(
           `stream success provider=${attempt.name} model=${attempt.request.model}`,
         );
+        this.recordSuccess(attempt.name);
+        return;
+      }
+      if (request.signal?.aborted) {
+        // The client went away; neither a failure nor worth a fallback.
         return;
       }
       this.logger.warn(
         `stream failed provider=${attempt.name} model=${attempt.request.model}`,
       );
+      this.recordFailure(attempt.name);
       if (produced) {
         return;
       }
@@ -179,7 +210,7 @@ export class AIRouter {
   ): Promise<
     { name: AIProviderName; provider: AIProvider; request: AIRequest }[]
   > {
-    const order = this.resolveProviderOrder(settings);
+    const order = this.skipTripped(this.resolveProviderOrder(settings));
     const attempts: {
       name: AIProviderName;
       provider: AIProvider;
@@ -204,5 +235,43 @@ export class AIRouter {
     );
 
     return attempts;
+  }
+
+  /**
+   * Drops providers whose breaker is open, keeping the order. If every
+   * provider is tripped the full order is returned so requests can still
+   * probe for recovery.
+   */
+  private skipTripped<T extends { name: AIProviderName }>(order: T[]): T[] {
+    const now = Date.now();
+    const healthy = order.filter(
+      ({ name }) => (this.health.get(name)?.openUntil ?? 0) <= now,
+    );
+    if (healthy.length < order.length) {
+      this.logger.warn(
+        `skipping tripped providers: ${order
+          .filter((o) => !healthy.includes(o))
+          .map((o) => o.name)
+          .join(', ')}`,
+      );
+    }
+    return healthy.length > 0 ? healthy : order;
+  }
+
+  private recordSuccess(name: AIProviderName): void {
+    this.health.delete(name);
+  }
+
+  private recordFailure(name: AIProviderName): void {
+    const state = this.health.get(name) ?? { failures: 0, openUntil: 0 };
+    state.failures += 1;
+    if (state.failures >= BREAKER_THRESHOLD) {
+      state.openUntil = Date.now() + BREAKER_COOLDOWN_MS;
+      state.failures = 0;
+      this.logger.warn(
+        `provider ${name} tripped; skipping for ${BREAKER_COOLDOWN_MS / 1000}s`,
+      );
+    }
+    this.health.set(name, state);
   }
 }

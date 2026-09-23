@@ -1,7 +1,5 @@
 import * as fc from 'fast-check';
-import { AIResult, UserSettings } from '../../shared';
 import { AIService } from '../../ai/ai.service';
-import { UsersService } from '../../users/users.service';
 import { BEHAVIORAL_MIN_CONFIDENCE } from '../memory.constants';
 import { MemoryExtractor } from './memory-extractor.service';
 
@@ -12,21 +10,6 @@ import { MemoryExtractor } from './memory-extractor.service';
  * Validates: Requirements 5.2, 5.3
  */
 
-const SETTINGS: UserSettings = {
-  userId: 'user-1',
-  provider: 'gemini',
-  model: 'test-model',
-  updatedAt: new Date().toISOString(),
-};
-
-/**
- * UsersService stub returning fixed settings. The extractor only reads settings
- * to select a provider/model, which is irrelevant to the gating under test.
- */
-function stubUsers(): UsersService {
-  return { getSettings: async () => SETTINGS } as unknown as UsersService;
-}
-
 /**
  * AIService stub that returns a scripted verdict. This lets the test drive the
  * real threshold-gating logic in the extractor without a network call. The
@@ -34,12 +17,8 @@ function stubUsers(): UsersService {
  */
 function stubAI(verdict: object): AIService {
   return {
-    async generate(): Promise<AIResult> {
-      return {
-        content: JSON.stringify(verdict),
-        provider: 'gemini',
-        model: 'test-model',
-      };
+    async generateUtility(): Promise<string> {
+      return JSON.stringify(verdict);
     },
   } as unknown as AIService;
 }
@@ -70,7 +49,6 @@ describe('MemoryExtractor (Property: trivial/behavioral gating)', () => {
         // gate runs first and short-circuits to "store nothing".
         const extractor = new MemoryExtractor(
           stubAI({ store: true, content: userText, confidence: 0.99 }),
-          stubUsers(),
         );
 
         const result = await extractor.extractFromExchange(
@@ -94,7 +72,6 @@ describe('MemoryExtractor (Property: trivial/behavioral gating)', () => {
         memoryType: 'personal_fact',
         confidence: 0.9,
       }),
-      stubUsers(),
     );
 
     const result = await extractor.extractFromExchange(
@@ -119,7 +96,6 @@ describe('MemoryExtractor (Property: trivial/behavioral gating)', () => {
               memoryType: 'behavioral',
               confidence,
             }),
-            stubUsers(),
           );
 
           const result = await extractor.extractFromExchange(

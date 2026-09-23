@@ -10,7 +10,7 @@ import type { AIProviderName } from './types';
 export const SUPPORTED_MODELS: Record<AIProviderName, string[]> = {
   gemini: ['gemini-3.6-flash', 'gemini-2.5-pro'],
   groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
-  openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet'],
+  openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-sonnet-4.5'],
 };
 
 export const SUPPORTED_PROVIDERS = Object.keys(

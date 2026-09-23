@@ -5,3 +5,5 @@ export * from './openrouter.provider';
 export * from './ai-request.codec';
 export * from './ai-router';
 export * from './ai.service';
+export * from './prompt-builder';
+export * from './usage.service';

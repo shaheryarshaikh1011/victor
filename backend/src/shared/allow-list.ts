@@ -1,4 +1,4 @@
-import { AIProviderName } from './types';
+import { AIProviderName, UserSettings } from './types';
 
 /**
  * The supported (provider, model) allow-list for VICTOR V1.
@@ -10,7 +10,7 @@ import { AIProviderName } from './types';
 export const SUPPORTED_MODELS: Readonly<Record<AIProviderName, readonly string[]>> = {
   gemini: ['gemini-3.6-flash', 'gemini-2.5-pro'],
   groq: ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'],
-  openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-3.5-sonnet'],
+  openrouter: ['openai/gpt-4o-mini', 'anthropic/claude-sonnet-4.5'],
 } as const;
 
 /**
@@ -20,10 +20,10 @@ export const SUPPORTED_MODELS: Readonly<Record<AIProviderName, readonly string[]
 export const MODEL_CONTEXT_WINDOW: Readonly<Record<string, number>> = {
   'gemini-3.6-flash': 1_048_576,
   'gemini-2.5-pro': 1_048_576,
-  'openai/gpt-oss-20b': 8_192,
-  'openai/gpt-oss-120b': 8_192,
+  'openai/gpt-oss-20b': 131_072,
+  'openai/gpt-oss-120b': 131_072,
   'openai/gpt-4o-mini': 128_000,
-  'anthropic/claude-3.5-sonnet': 200_000,
+  'anthropic/claude-sonnet-4.5': 200_000,
 } as const;
 
 /** Fallback context window when a model is not listed above. */
@@ -57,4 +57,22 @@ export function isSupportedModel(
     provider
   ];
   return models !== undefined && models.includes(model);
+}
+
+/**
+ * The fast, cheap model used for background work (memory extraction, command
+ * normalization, summaries, titles) regardless of the user's chat model.
+ * Override with UTILITY_PROVIDER / UTILITY_MODEL; an unsupported pair falls
+ * back to the default.
+ */
+export function utilitySettings(userId: string): UserSettings {
+  const provider = process.env.UTILITY_PROVIDER ?? 'groq';
+  const model = process.env.UTILITY_MODEL ?? 'openai/gpt-oss-20b';
+  const valid = isSupportedModel(provider, model);
+  return {
+    userId,
+    provider: valid ? provider : 'groq',
+    model: valid ? model : 'openai/gpt-oss-20b',
+    updatedAt: new Date(0).toISOString(),
+  };
 }

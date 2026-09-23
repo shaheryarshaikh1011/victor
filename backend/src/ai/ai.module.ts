@@ -5,6 +5,8 @@ import { OpenRouterProvider } from './openrouter.provider';
 import { AIRequestCodec } from './ai-request.codec';
 import { AIRouter } from './ai-router';
 import { AIService } from './ai.service';
+import { PromptBuilder } from './prompt-builder';
+import { UsageService } from './usage.service';
 
 /**
  * AIModule provides the AI provider implementations, the request codec, the
@@ -19,6 +21,8 @@ import { AIService } from './ai.service';
     AIRequestCodec,
     AIRouter,
     AIService,
+    UsageService,
+    PromptBuilder,
   ],
   exports: [
     GeminiProvider,
@@ -27,6 +31,8 @@ import { AIService } from './ai.service';
     AIRequestCodec,
     AIRouter,
     AIService,
+    UsageService,
+    PromptBuilder,
   ],
 })
 export class AIModule {}
