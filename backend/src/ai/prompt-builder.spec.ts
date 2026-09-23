@@ -32,11 +32,12 @@ describe('PromptBuilder', () => {
   });
 
   it('drops the oldest turns once the token budget is exceeded', () => {
-    const big = 'x'.repeat(40_000); // ~10k tokens each
+    // ~10k tokens each; the 24k budget fits two of them.
+    const big = (c: string) => c.repeat(40_000);
     const history = [
-      turn(1, 'user', big),
-      turn(2, 'assistant', big),
-      turn(3, 'user', big),
+      turn(1, 'user', big('a')),
+      turn(2, 'assistant', big('b')),
+      turn(3, 'user', big('c')),
       turn(4, 'assistant', 'short'),
       turn(5, 'user', 'latest'),
     ];
@@ -48,11 +49,13 @@ describe('PromptBuilder', () => {
       history,
     });
 
-    const contents = messages.slice(1).map((m) => m.content);
-    expect(contents[contents.length - 1]).toBe('latest');
-    expect(contents).not.toContain(history[0].content);
-    // The kept window still starts with a user turn.
-    expect(messages[1].role).toBe('user');
+    // Turn 1 is over budget; turn 2 fits but would open the window with an
+    // assistant turn, so it is dropped too.
+    expect(messages.slice(1).map((m) => m.content)).toEqual([
+      history[2].content,
+      'short',
+      'latest',
+    ]);
   });
 
   it('always keeps the latest turns even if they alone exceed the budget', () => {
