@@ -78,23 +78,23 @@
   - Register `MemoryModule` (and `EmbeddingsModule`) in `backend/src/app.module.ts`
   - _Requirements: 3.1, 3.4_
 
-- [ ] 6. Checkpoint - Make sure all tests pass
+- [x] 6. Checkpoint - Make sure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Memory extraction and command handling
-- [ ] 7.1 Implement MemoryExtractor command detection
+- [x] 7. Memory extraction and command handling
+- [x] 7.1 Implement MemoryExtractor command detection
   - Create `backend/src/memory/services/memory-extractor.service.ts` with a deterministic regex prefilter for remember/forget/"what do you remember" commands, then use `AIService` to normalize the fact (remember) or build a search query (forget)
   - _Requirements: 4.1, 4.2, 8.1_
 
-- [ ] 7.2 Implement automatic extraction with usefulness gating
+- [x] 7.2 Implement automatic extraction with usefulness gating
   - Add `extractFromExchange(userId, conversationId, userText, aiText)` that evaluates usefulness/stability/relevance/non-triviality via `AIService`, skips trivial/ephemeral content, applies the behavioral confidence threshold, does not infer sensitive attributes, and does not invent unstated memories
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 7.3 Write property test for trivial content rejection
+- [x] 7.3 Write property test for trivial content rejection
   - **Property: For any message classified as trivial/ephemeral, automatic extraction stores no memory; behavioral candidates below BEHAVIORAL_MIN_CONFIDENCE are not stored**
   - **Validates: Requirements 5.2, 5.3**
 
-- [ ] 7.4 Write unit tests for command detection
+- [x] 7.4 Write unit tests for command detection
   - Verify remember/forget/"what do you remember" phrasings are detected and non-command messages are not
   - _Requirements: 4.1, 4.2, 8.1_
 
