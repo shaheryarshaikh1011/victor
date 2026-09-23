@@ -51,7 +51,10 @@ it('renders memories with type, importance, created and last-accessed dates', as
   render(<MemoryPage />);
 
   expect(await screen.findByText('Prefers concise answers')).toBeInTheDocument();
-  expect(screen.getByText('preference')).toBeInTheDocument();
+  // Scope to the rendered item's definition list so the filter <option> with
+  // the same text does not cause an ambiguous match.
+  const typeTerm = screen.getByText('Type:');
+  expect(typeTerm.parentElement).toHaveTextContent('preference');
   expect(screen.getByText('high')).toBeInTheDocument();
   expect(screen.getByText(/Created:/)).toBeInTheDocument();
   expect(screen.getByText(/Last accessed:/)).toBeInTheDocument();
