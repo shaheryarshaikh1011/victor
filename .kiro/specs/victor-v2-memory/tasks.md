@@ -35,32 +35,32 @@
   - **Property: For any text, EmbeddingService returns a null result on provider failure and never throws; identical normalized inputs return cache-identical vectors**
   - **Validates: Requirements 11.1**
 
-- [ ] 3. Memory repository (Supabase access)
-- [ ] 3.1 Implement MemoryRepository
+- [x] 3. Memory repository (Supabase access)
+- [x] 3.1 Implement MemoryRepository
   - Create `backend/src/memory/memory.repository.ts` wrapping all Supabase access via `SupabaseService.admin`: `insert`, `findById`, `list` (type/status/text filter, ordering, pagination in one query), `matchMemories` (calls the SQL function), `update` (single `UPDATE ... WHERE id = ? AND user_id = ?`), `delete`, `deleteAll`
   - Map DB rows to the `Memory` domain type
   - _Requirements: 1.1, 2.1, 3.2, 12.2_
 
-- [ ] 4. Memory service (CRUD, isolation, dedup/conflict)
-- [ ] 4.1 Implement MemoryService CRUD with ownership enforcement
+- [x] 4. Memory service (CRUD, isolation, dedup/conflict)
+- [x] 4.1 Implement MemoryService CRUD with ownership enforcement
   - Create `backend/src/memory/memory.service.ts` with `createMemory`, `getMemory`, `searchMemories` (filter+text), `getRelevantMemories` (vector via `matchMemories`), `updateMemory`, `deleteMemory`, `deleteAllMemories`, and a private `assertOwned` mirroring `ConversationsService`
   - Assign default importance/confidence by type/source when not provided (constants from 1.3)
   - Return `MemoryView` (never embedding) from read/list operations
   - _Requirements: 1.1, 1.3, 1.4, 2.1, 2.2, 2.3, 3.3_
 
-- [ ] 4.2 Implement dedup and conflict resolution on create
+- [x] 4.2 Implement dedup and conflict resolution on create
   - In `createMemory`, use `matchMemories` (k=1) to find the nearest existing memory: cosine ≥ `DEDUP_SIMILARITY` reinforces the existing memory (bump importance/confidence + timestamp); conflicting same-type preference/personal_fact supersedes the old (status=superseded, `metadata.supersededBy`) in a single ownership-scoped update
   - _Requirements: 7.1, 7.2_
 
-- [ ] 4.3 Write property test for user isolation
+- [x] 4.3 Write property test for user isolation
   - **Property: For any two distinct users and any memory owned by user B, every operation (get/update/delete/search) invoked by user A is rejected and does not return or mutate B's memory**
   - **Validates: Requirements 2.1, 2.2, 2.3**
 
-- [ ] 4.4 Write property test for deduplication and conflict handling
+- [x] 4.4 Write property test for deduplication and conflict handling
   - **Property: For any memory and a near-identical new memory (cosine ≥ DEDUP_SIMILARITY), the store count is unchanged and the existing memory is reinforced; for any conflicting same-type memory, the old one is superseded and the new one becomes active**
   - **Validates: Requirements 7.1, 7.2**
 
-- [ ] 4.5 Write unit tests for default importance/confidence assignment
+- [x] 4.5 Write unit tests for default importance/confidence assignment
   - Verify explicit → high/0.95, auto preference/personal_fact/episodic → medium/0.6, behavioral gating by confidence threshold
   - _Requirements: 1.3, 1.4_
 
