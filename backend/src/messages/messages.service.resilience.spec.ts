@@ -8,7 +8,9 @@ import { MemoryService } from '../memory/memory.service';
 import { MemoryExtractor } from '../memory/services/memory-extractor.service';
 import { MemoryManager } from '../memory/services/memory-manager.service';
 import { MemoryRetriever } from '../memory/services/memory-retriever.service';
+import { PromptBuilder } from '../ai/prompt-builder';
 import { MessagesService } from './messages.service';
+import { ConversationSummarizer } from './conversation-summarizer.service';
 
 /**
  * Feature: victor-v2-memory, Property 9.3: For any user message, when
@@ -90,7 +92,26 @@ class FakeSupabase {
 
 /** ConversationsService stub: ownership always passes for the fixed user. */
 function stubConversations(): ConversationsService {
-  return { getOwned: async () => undefined } as unknown as ConversationsService;
+  return {
+    getOwned: async () => ({
+      id: CONV_ID,
+      userId: USER_ID,
+      title: 'Existing',
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+      summary: null,
+      summaryUpto: null,
+    }),
+    touch: async () => undefined,
+    autoTitle: async () => undefined,
+  } as unknown as ConversationsService;
+}
+
+/** Summarizer stub: summaries are out of scope for this property. */
+function stubSummarizer(): ConversationSummarizer {
+  return {
+    maybeSummarize: async () => undefined,
+  } as unknown as ConversationSummarizer;
 }
 
 /** UsersService stub returning fixed settings. */
@@ -161,6 +182,8 @@ describe('MessagesService (Property: chat resilience when memory fails)', () => 
             stubAI(capture),
             stubUsers(),
             throwingMemoryManager(),
+            new PromptBuilder(),
+            stubSummarizer(),
           );
 
           const chunks: AIChunk[] = [];
@@ -181,12 +204,15 @@ describe('MessagesService (Property: chat resilience when memory fails)', () => 
           expect(text).toBe('v1-reply');
           expect(chunks.some((c) => c.type === 'error')).toBe(false);
 
-          // Memory context was empty: no system message was injected
-          // (Requirement 11.1).
+          // Memory context was empty: only the persona system message was
+          // sent, with no memory block (Requirement 11.1).
           const systemMessages = (capture.last?.messages ?? []).filter(
             (m) => m.role === 'system',
           );
-          expect(systemMessages).toHaveLength(0);
+          expect(systemMessages).toHaveLength(1);
+          expect(systemMessages[0].content).not.toContain(
+            'Relevant memories',
+          );
 
           // Both the user message and the assistant reply were persisted
           // (V1 behavior preserved, Requirement 13.1).

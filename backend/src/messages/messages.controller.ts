@@ -47,8 +47,8 @@ export class MessagesController {
     @Param('id', ParseUUIDPipe) conversationId: string,
     @Body() dto: SendMessageDto,
   ): Observable<MessageEvent> {
-    return this.toEventStream(
-      this.messages.sendAndStream(userId, conversationId, dto.content),
+    return this.toEventStream((signal) =>
+      this.messages.sendAndStream(userId, conversationId, dto.content, signal),
     );
   }
 
@@ -59,26 +59,29 @@ export class MessagesController {
     @Param('id', ParseUUIDPipe) conversationId: string,
     @Param('messageId', ParseUUIDPipe) messageId: string,
   ): Observable<MessageEvent> {
-    return this.toEventStream(
-      this.messages.regenerate(userId, conversationId, messageId),
+    return this.toEventStream((signal) =>
+      this.messages.regenerate(userId, conversationId, messageId, signal),
     );
   }
 
   /**
    * Adapts an async iterable of chunks into an Observable of SSE events,
-   * preserving delivery order (Requirements 7.1, 7.2).
+   * preserving delivery order (Requirements 7.1, 7.2). When the client
+   * disconnects, the abort signal cancels the upstream AI request so no more
+   * tokens are generated (or billed) for a reply nobody will read.
    */
   private toEventStream(
-    chunks: AsyncIterable<AIChunk>,
+    open: (signal: AbortSignal) => AsyncIterable<AIChunk>,
   ): Observable<MessageEvent> {
     return new Observable<MessageEvent>((subscriber) => {
-      let cancelled = false;
+      const controller = new AbortController();
 
       (async () => {
         try {
-          for await (const chunk of chunks) {
-            if (cancelled) {
-              return;
+          for await (const chunk of open(controller.signal)) {
+            if (controller.signal.aborted) {
+              // Keep draining so the service can persist the partial reply.
+              continue;
             }
             subscriber.next({ data: chunk });
           }
@@ -92,7 +95,7 @@ export class MessagesController {
       })();
 
       return () => {
-        cancelled = true;
+        controller.abort();
       };
     });
   }

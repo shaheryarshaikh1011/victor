@@ -5,6 +5,7 @@ import { MemoryModule } from '../memory/memory.module';
 import { UsersModule } from '../users/users.module';
 import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
+import { ConversationSummarizer } from './conversation-summarizer.service';
 
 /**
  * MessagesModule exposes message reads and the streaming send/regenerate
@@ -17,7 +18,7 @@ import { MessagesService } from './messages.service';
 @Module({
   imports: [ConversationsModule, UsersModule, AIModule, MemoryModule],
   controllers: [MessagesController],
-  providers: [MessagesService],
+  providers: [MessagesService, ConversationSummarizer],
   exports: [MessagesService],
 })
 export class MessagesModule {}
