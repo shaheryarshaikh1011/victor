@@ -85,6 +85,9 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
+      <a href="/chat" className="mb-4 inline-block text-sm underline">
+        ← Chat
+      </a>
       <form
         onSubmit={handleSubmit}
         className="space-y-4 rounded-lg border p-6"
