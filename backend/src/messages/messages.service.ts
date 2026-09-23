@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AIChunk, AIRequest, Message, MessageRole } from '../shared';
@@ -26,6 +27,8 @@ import { MemoryManager } from '../memory/services/memory-manager.service';
  */
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(
     private readonly supabase: SupabaseService,
     private readonly conversations: ConversationsService,
@@ -180,6 +183,19 @@ export class MessagesService {
       model: settings.model,
       messages,
     };
+
+    // Debug aid: log the exact prompt sent to the AI (system prompt + memory
+    // context + conversation history + current message). Opt-in via
+    // LOG_AI_PROMPT since it echoes memory/message content (Requirement 12.1).
+    if (process.env.LOG_AI_PROMPT === 'true') {
+      const rendered = messages
+        .map((m, i) => `  [${i}] ${m.role}: ${m.content}`)
+        .join('\n');
+      this.logger.debug(
+        `AI prompt (provider=${settings.provider}, model=${settings.model}, ` +
+          `messages=${messages.length}):\n${rendered}`,
+      );
+    }
 
     let assembled = '';
     let errored = false;
