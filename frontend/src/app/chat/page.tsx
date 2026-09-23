@@ -230,16 +230,24 @@ export default function ChatPage() {
       />
 
       <section className="flex flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b p-3 md:hidden">
+        <header className="flex items-center gap-2 border-b p-3">
           <button
             type="button"
             aria-label="Open sidebar"
             onClick={() => setSidebarOpen(true)}
-            className="rounded border px-3 py-2 text-sm"
+            className="rounded border px-3 py-2 text-sm md:hidden"
           >
             ☰
           </button>
           <span className="text-sm font-semibold">VICTOR</span>
+          <nav className="ml-auto flex items-center gap-3 text-sm">
+            <a href="/memory" className="underline">
+              Memories
+            </a>
+            <a href="/settings" className="underline">
+              Settings
+            </a>
+          </nav>
         </header>
 
         {error && (

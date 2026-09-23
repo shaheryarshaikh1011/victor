@@ -93,7 +93,12 @@ export default function MemoryPage() {
   return (
     <main className="mx-auto max-w-2xl p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Memories</h1>
+        <div className="flex items-center gap-3">
+          <a href="/chat" className="text-sm underline">
+            ← Chat
+          </a>
+          <h1 className="text-xl font-semibold">Memories</h1>
+        </div>
         <button
           type="button"
           onClick={handleDeleteAll}
