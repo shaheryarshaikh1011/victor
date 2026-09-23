@@ -8,6 +8,7 @@ import { SupabaseService } from '../auth/supabase.service';
 import { ConversationsService } from '../conversations/conversations.service';
 import { AIService } from '../ai/ai.service';
 import { UsersService } from '../users/users.service';
+import { MemoryManager } from '../memory/services/memory-manager.service';
 
 /**
  * Owns message persistence and reads scoped to the Authenticated_User_Id via
@@ -30,6 +31,7 @@ export class MessagesService {
     private readonly conversations: ConversationsService,
     private readonly aiService: AIService,
     private readonly users: UsersService,
+    private readonly memory: MemoryManager,
   ) {}
 
   /**
@@ -82,6 +84,21 @@ export class MessagesService {
   ): AsyncIterable<AIChunk> {
     await this.conversations.getOwned(userId, conversationId);
     await this.insertMessage(conversationId, 'user', content);
+
+    // Explicit memory commands (remember/forget/recall) are answered directly
+    // without an LLM call: stream the confirmation and persist it as the
+    // assistant reply (Requirements 4.1, 4.2, 8.1). Failures fall through to
+    // the normal pipeline (Requirement 11.2).
+    const handled = await this.memory.handleUserMessage(
+      userId,
+      conversationId,
+      content,
+    );
+    if (handled.handled && handled.reply) {
+      yield { type: 'chunk', content: handled.reply };
+      await this.insertMessage(conversationId, 'assistant', handled.reply);
+      return;
+    }
 
     const history = await this.readMessages(conversationId);
     yield* this.streamAssistantReply(userId, conversationId, history);
@@ -141,12 +158,27 @@ export class MessagesService {
     history: Message[],
   ): AsyncIterable<AIChunk> {
     const settings = await this.users.getSettings(userId);
+
+    // Inject relevant memories as a system message ordered before the
+    // conversation history (Requirement 6.3). Best-effort: an empty block is
+    // returned on any failure so chat proceeds without memory (Requirement
+    // 11.1).
+    const latestUserText = this.latestUserText(history);
+    const memoryContext = latestUserText
+      ? await this.memory.buildMemoryContext(userId, latestUserText)
+      : '';
+
+    const messages: AIRequest['messages'] = [];
+    if (memoryContext) {
+      messages.push({ role: 'system', content: memoryContext });
+    }
+    for (const message of history) {
+      messages.push({ role: message.role, content: message.content });
+    }
+
     const request: AIRequest = {
       model: settings.model,
-      messages: history.map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
+      messages,
     };
 
     let assembled = '';
@@ -164,7 +196,27 @@ export class MessagesService {
 
     if (!errored) {
       await this.insertMessage(conversationId, 'assistant', assembled);
+      // Fire-and-forget auto-extraction off the response path; never blocks or
+      // breaks the reply (Requirements 5.x, 11.2).
+      if (latestUserText) {
+        void this.memory.extractFromExchange(
+          userId,
+          conversationId,
+          latestUserText,
+          assembled,
+        );
+      }
     }
+  }
+
+  /** Returns the content of the most recent user message, or empty string. */
+  private latestUserText(history: Message[]): string {
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+      if (history[i].role === 'user') {
+        return history[i].content;
+      }
+    }
+    return '';
   }
 
   /**

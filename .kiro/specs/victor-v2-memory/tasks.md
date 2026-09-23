@@ -111,21 +111,21 @@
   - **Property: For any retrieved memory, its last_accessed_at is advanced to at or after the retrieval time**
   - **Validates: Requirements 6.4**
 
-- [ ] 9. Memory manager and chat pipeline integration
-- [ ] 9.1 Implement MemoryManager orchestration
+- [x] 9. Memory manager and chat pipeline integration
+- [x] 9.1 Implement MemoryManager orchestration
   - Create `backend/src/memory/services/memory-manager.service.ts` with `handleUserMessage(userId, conversationId, text)` returning `{ handled, reply? }` for remember/forget/"what do you remember" (forget reports nothing matched when no memory passes threshold; summary uses only stored memories), `buildMemoryContext`, and `extractFromExchange`; all methods catch errors internally and return safe defaults
   - _Requirements: 4.1, 4.2, 4.3, 8.1, 8.2, 11.1, 11.2_
 
-- [ ] 9.2 Integrate MemoryManager into MessagesService
+- [x] 9.2 Integrate MemoryManager into MessagesService
   - In `backend/src/messages/messages.service.ts` `streamAssistantReply`/`sendAndStream`: first call `handleUserMessage` and, when handled, stream the confirmation and persist it without an LLM call; otherwise inject the memory context system message before history, run existing `AIService.stream`, then fire-and-forget `extractFromExchange` after a successful reply
   - Import `MemoryModule` into `MessagesModule`
   - _Requirements: 4.1, 4.2, 6.3, 11.1, 11.2, 13.1_
 
-- [ ] 9.3 Write property test for chat resilience when memory fails
+- [x] 9.3 Write property test for chat resilience when memory fails
   - **Property: For any user message, when embedding/search/store/extraction throws, the V1 chat pipeline still produces a reply (memory context empty) and does not error**
   - **Validates: Requirements 11.1, 11.2, 13.1**
 
-- [ ] 9.4 Write property test for forget with no match
+- [x] 9.4 Write property test for forget with no match
   - **Property: For any forget command that matches no stored memory above threshold, the manager reports nothing matched and no memory is deleted or invalidated**
   - **Validates: Requirements 4.3**
 

@@ -2,9 +2,12 @@ import { Module } from '@nestjs/common';
 import { AIModule } from '../ai';
 import { AuthModule } from '../auth';
 import { EmbeddingsModule } from '../embeddings';
+import { UsersModule } from '../users/users.module';
 import { MemoryController } from './memory.controller';
 import { MemoryRepository } from './memory.repository';
 import { MemoryService } from './memory.service';
+import { MemoryExtractor } from './services/memory-extractor.service';
+import { MemoryManager } from './services/memory-manager.service';
 import { MemoryRetriever } from './services/memory-retriever.service';
 
 /**
@@ -12,14 +15,22 @@ import { MemoryRetriever } from './services/memory-retriever.service';
  * and the memory domain service reused by the chat pipeline.
  *
  * It imports EmbeddingsModule for query/content embeddings (Requirement 10.1),
- * AuthModule for `SupabaseService`/`SupabaseAuthGuard`, and AIModule for the
- * shared provider abstraction used by extraction/summarization. `MemoryService`
- * is exported so the MessagesModule can integrate memory into chat.
+ * AuthModule for `SupabaseService`/`SupabaseAuthGuard`, AIModule for the shared
+ * provider abstraction used by extraction/summarization, and UsersModule for
+ * the caller's model settings used by the extractor. `MemoryService` and
+ * `MemoryManager` are exported so the MessagesModule can integrate memory into
+ * chat (Requirements 4.x, 6.3).
  */
 @Module({
-  imports: [EmbeddingsModule, AuthModule, AIModule],
+  imports: [EmbeddingsModule, AuthModule, AIModule, UsersModule],
   controllers: [MemoryController],
-  providers: [MemoryRepository, MemoryService, MemoryRetriever],
-  exports: [MemoryService, MemoryRetriever],
+  providers: [
+    MemoryRepository,
+    MemoryService,
+    MemoryRetriever,
+    MemoryExtractor,
+    MemoryManager,
+  ],
+  exports: [MemoryService, MemoryRetriever, MemoryManager],
 })
 export class MemoryModule {}
