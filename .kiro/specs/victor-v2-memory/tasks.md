@@ -1,17 +1,17 @@
 # Implementation Plan
 
-- [ ] 1. Database migration and shared memory types
-- [ ] 1.1 Create the `memories` table migration
+- [x] 1. Database migration and shared memory types
+- [x] 1.1 Create the `memories` table migration
   - Add `backend/supabase/migrations/0002_memory.sql` creating `public.memories` with columns `id`, `user_id` (FK profiles ON DELETE CASCADE), `content`, `memory_type` (check explicit/preference/personal_fact/episodic/behavioral), `source` (check user_explicit/auto_extracted), `source_conversation_id` (FK conversations ON DELETE SET NULL), `importance` (check low/medium/high), `confidence` (real check 0..1), `status` (check active/superseded default active), `embedding vector(768)`, `metadata jsonb default '{}'`, `created_at`, `updated_at`, `last_accessed_at`
   - Create `idx_memories_user_active_type (user_id, status, memory_type)`, IVFFlat cosine `idx_memories_embedding` (lists=100), and GIN trigram `idx_memories_content_trgm` on `content` (enable `pg_trgm`)
   - Add RLS policies restricting all access to `auth.uid() = user_id`
   - _Requirements: 1.1, 1.2, 2.4, 12.2_
 
-- [ ] 1.2 Add the `match_memories` SQL function
+- [x] 1.2 Add the `match_memories` SQL function
   - In the same migration, define `match_memories(p_user_id, p_query vector, p_k int, p_min_sim real)` performing user-scoped ANN search, similarity threshold, combined ranking (`0.70*similarity + 0.20*importance_weight + 0.10*recency`), and a `last_accessed_at` bump for the returned rows within the same call (CTE)
   - _Requirements: 2.3, 6.1, 6.4, 12.2_
 
-- [ ] 1.3 Define backend memory domain types
+- [x] 1.3 Define backend memory domain types
   - Create `backend/src/memory/memory.types.ts` with `MemoryType`, `MemorySource`, `Importance`, `MemoryStatus`, `Memory` (domain, includes embedding), `MemoryView` (API-safe, no embedding), `CreateMemoryInput`, `UpdateMemoryInput`, `MemorySearchOptions`
   - Create `backend/src/memory/memory.constants.ts` with `TOP_K=8`, `MIN_SIMILARITY=0.75`, `DEDUP_SIMILARITY=0.92`, `BEHAVIORAL_MIN_CONFIDENCE=0.8`, `MAX_CONTEXT_MEMORIES=8`, `MAX_CONTEXT_CHARS=1200`, `EMBED_CACHE_SIZE=256`, `MIN_MESSAGE_LEN_FOR_RETRIEVAL`, and ranking weights, plus importance/confidence constants by type/source
   - _Requirements: 1.3, 1.4, 3.3, 12.2_
